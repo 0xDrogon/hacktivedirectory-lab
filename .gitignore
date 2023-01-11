@@ -1,4 +1,4 @@
-terraform/keys/*
+terraform/keys/
 terraform/.terraform/
 terraform/.terraform*
 terraform/terraform*
