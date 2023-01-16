@@ -30,6 +30,14 @@ variable "SECOND_DC_IP" {
     default = "10.0.1.102"
 }
 
+variable "USER_SERVER_IP" {
+  default = "10.0.1.50"
+}
+
+variable "ATTACK_SERVER_IP" {
+  default = "10.0.1.10"
+}
+
 variable "PUBLIC_DNS" {
     default = "1.1.1.1"
 }
