@@ -39,6 +39,14 @@ variable "MANAGEMENT_IPS" {
     default = ["1.2.3.4/32"]
 }
 
+variable "WINDOWS_SERVER_AMI" {
+    default = "ami-051148891ab67c55e"
+}
+
+variable "DEBIAN_AMI" {
+    default = "ami-03c5ca432499db74d"
+}
+
 variable "SSM_S3_BUCKET" {
     # Add in the name of your S3 bucket like the example below
     default = "this-is-just-a-fake-bucket"
