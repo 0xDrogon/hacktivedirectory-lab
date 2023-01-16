@@ -60,9 +60,9 @@ resource "aws_vpc_dhcp_options_association" "first-dhcp-assoc" {
     dhcp_options_id = aws_vpc_dhcp_options.first-dhcp.id
 }
 
-# Our first domain controller of the "ad-lab.local" domain
+# First domain controller of the "ad-lab.local" domain
 resource "aws_instance" "first-dc" {
-    ami                         = data.aws_ami.latest-windows-server.image_id
+    ami                         = var.WINDOWS_SERVER_AMI
     instance_type               = "t2.small"
     key_name                    = aws_key_pair.terraformkey.key_name
     associate_public_ip_address = true
@@ -80,9 +80,9 @@ resource "aws_instance" "first-dc" {
     ]
 }
 
-# Our second domain controller of the "ad-lab.local" domain
+# Second domain controller of the "ad-lab.local" domain
 resource "aws_instance" "second-dc" {
-    ami                         = var.ENVIRONMENT == "deploy" ? data.aws_ami.second-dc.0.image_id : data.aws_ami.latest-windows-server.image_id
+    ami                         = var.WINDOWS_SERVER_AMI
     instance_type               = "t2.small"
     key_name                    = aws_key_pair.terraformkey.key_name
     associate_public_ip_address = true
@@ -97,5 +97,45 @@ resource "aws_instance" "second-dc" {
 
     vpc_security_group_ids = [
         aws_security_group.second-sg.id,
+    ]
+}
+
+# The User server which will be main foothold
+resource "aws_instance" "user-server" {
+    ami                         = var.WINDOWS_SERVER_AMI
+    instance_type               = "t2.small"
+    key_name                    = aws_key_pair.terraformkey.key_name
+    associate_public_ip_address = true
+    subnet_id                   = aws_subnet.first-vpc-subnet.id
+    private_ip                  = var.USER_SERVER_IP
+    iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
+
+    tags = {
+        Workspace = "${terraform.workspace}"
+        Name      = "${terraform.workspace}-User-Server"
+    }
+
+    vpc_security_group_ids = [
+        aws_security_group.first-sg.id,
+    ]
+}
+
+# The C2 teamserver
+resource "aws_instance" "attack-server" {
+    ami                         = var.DEBIAN_AMI
+    instance_type               = "t2.small"
+    key_name                    = aws_key_pair.terraformkey.key_name
+    associate_public_ip_address = true
+    subnet_id                   = aws_subnet.first-vpc-subnet.id
+    private_ip                  = var.ATTACK_SERVER_IP
+    iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
+
+    tags = {
+        Workspace = "${terraform.workspace}"
+        Name      = "${terraform.workspace}-Attack-Server"
+    }
+
+    vpc_security_group_ids = [
+        aws_security_group.first-sg.id,
     ]
 }
