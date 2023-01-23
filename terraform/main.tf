@@ -43,7 +43,7 @@ resource "aws_subnet" "first-vpc-subnet" {
 
 # Set DHCP options for delivering things like DNS servers
 resource "aws_vpc_dhcp_options" "first-dhcp" {
-    domain_name          = "ad-lab.local"
+    domain_name          = "adlab.local"
     domain_name_servers  = [var.FIRST_DC_IP, var.PUBLIC_DNS]
     ntp_servers          = [var.FIRST_DC_IP]
     netbios_name_servers = [var.FIRST_DC_IP]
@@ -60,7 +60,7 @@ resource "aws_vpc_dhcp_options_association" "first-dhcp-assoc" {
     dhcp_options_id = aws_vpc_dhcp_options.first-dhcp.id
 }
 
-# First domain controller of the "ad-lab.local" domain
+# First domain controller of the "adlab.local" domain
 resource "aws_instance" "first-dc" {
     ami                         = var.WINDOWS_SERVER_AMI
     instance_type               = "t2.small"
@@ -80,7 +80,7 @@ resource "aws_instance" "first-dc" {
     ]
 }
 
-# Second domain controller of the "ad-lab.local" domain
+# Second domain controller of the "adlab.local" domain
 resource "aws_instance" "second-dc" {
     ami                         = var.WINDOWS_SERVER_AMI
     instance_type               = "t2.small"
