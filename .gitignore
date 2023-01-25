@@ -2,4 +2,5 @@ terraform/keys/
 terraform/.terraform/
 terraform/.terraform*
 terraform/terraform*
+terraform/vars.tf
 dsc/Lab/
