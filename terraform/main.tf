@@ -34,7 +34,7 @@ resource "aws_subnet" "first-vpc-subnet" {
     vpc_id = aws_vpc.lab-vpc.id
 
     cidr_block        = var.FIRST_SUBNET_CIDR
-    availability_zone = "eu-west-1"
+    availability_zone = "eu-west-1a"
 
     tags = {
         Name = "First Subnet"
@@ -68,11 +68,11 @@ resource "aws_instance" "first-dc" {
     associate_public_ip_address = true
     subnet_id                   = aws_subnet.first-vpc-subnet.id
     private_ip                  = var.FIRST_DC_IP
-    iam_instance_profile        = var.ENVIRONMENT == "deploy" ? null : aws_iam_instance_profile.ssm_instance_profile.0.name
+    iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
 
     tags = {
         Workspace = "${terraform.workspace}"
-        Name = "${terraform.workspace}-First-DC"
+        Name      = "${terraform.workspace}-First-DC"
     }
 
     vpc_security_group_ids = [
@@ -88,7 +88,7 @@ resource "aws_instance" "second-dc" {
     associate_public_ip_address = true
     subnet_id                   = aws_subnet.first-vpc-subnet.id
     private_ip                  = var.SECOND_DC_IP
-    iam_instance_profile        = var.ENVIRONMENT == "deploy" ? null : aws_iam_instance_profile.ssm_instance_profile.0.name
+    iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
 
     tags = {
         Workspace = "${terraform.workspace}"
@@ -96,7 +96,7 @@ resource "aws_instance" "second-dc" {
     }
 
     vpc_security_group_ids = [
-        aws_security_group.second-sg.id,
+        aws_security_group.first-sg.id,
     ]
 }
 
@@ -138,4 +138,184 @@ resource "aws_instance" "attack-server" {
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
     ]
+}
+
+# IAM Role required to access SSM from EC2
+resource "aws_iam_role" "ssm_role" {
+  name               = "${terraform.workspace}_ssm_role_default"
+  count              = 1
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_role_policy" {
+    role       = aws_iam_role.ssm_role.0.name
+    policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
+}
+
+resource "aws_iam_instance_profile" "ssm_instance_profile" {
+    name  = "${terraform.workspace}_ssm_instance_profile"
+    role  = aws_iam_role.ssm_role.0.name
+}
+
+# Security group for adlab.local
+resource "aws_security_group" "first-sg" {
+    vpc_id = aws_vpc.lab-vpc.id
+
+    ingress {
+        protocol    = "-1"
+        cidr_blocks = [var.FIRST_SUBNET_CIDR]
+        from_port   = 0
+        to_port     = 0
+    }
+
+    # Allow management from our IP
+    ingress {
+        protocol    = "-1"
+        cidr_blocks = var.MANAGEMENT_IPS
+        from_port   = 0
+        to_port     = 0
+    }
+
+    # Allow global outbound
+    egress {
+        protocol    = "-1"
+        cidr_blocks = ["0.0.0.0/0"]
+        from_port   = 0
+        to_port     = 0
+    }
+}
+
+# Add first.local MOF's to S3
+resource "aws_s3_bucket_object" "first-dc-mof" {
+    bucket     = var.SSM_S3_BUCKET
+    key        = "Lab/First.mof"
+    source     = "../dsc/Lab/First.mof"
+    etag       = filemd5("../dsc/Lab/First.mof")
+}
+
+# Add second.local MOF's to S3
+resource "aws_s3_bucket_object" "second-dc-mof" {
+    bucket     = var.SSM_S3_BUCKET
+    key        = "Lab/Second.mof"
+    source     = "../dsc/Lab/Second.mof"
+    etag       = filemd5("../dsc/Lab/Second.mof")
+}
+
+# Add userserver MOF's to S3
+resource "aws_s3_bucket_object" "user-server-mof" {
+    bucket     = var.SSM_S3_BUCKET
+    key        = "Lab/UserServer.mof"
+    source     = "../dsc/Lab/UserServer.mof"
+    etag       = filemd5("../dsc/Lab/UserServer.mof")
+}
+
+# SSM parameters used by DSC
+resource "aws_ssm_parameter" "admin-ssm-parameter" {
+    name  = "admin"
+    type  = "SecureString"
+    value = "{\"Username\":\"admin\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "first-admin-ssm-parameter" {
+    name  = "first-admin"
+    type  = "SecureString"
+    value = "{\"Username\":\"first.local\\\\admin\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "regular-user-ssm-parameter" {
+    name  = "regular.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"regular.user\", \"Password\":\"Password@3\"}"
+}
+
+resource "aws_ssm_parameter" "roast-user-ssm-parameter" {
+    name  = "roast.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"roast.user\", \"Password\":\"Password@4\"}"
+}
+
+resource "aws_ssm_parameter" "asrep-user-ssm-parameter" {
+    name  = "asrep.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"asrep.user\", \"Password\":\"Password@5\"}"
+}
+
+output "first-dc_ip" {
+    value       = "${aws_instance.first-dc.public_ip}"
+    description = "Public IP of First-DC"
+}
+
+output "second-dc_ip" {
+    value       = "${aws_instance.second-dc.public_ip}"
+    description = "Public IP of Second-DC"
+}
+
+output "user-server_ip" {
+    value       = "${aws_instance.user-server.public_ip}"
+    description = "Public IP of User Server"
+}
+
+output "attack-server_ip" {
+    value       = "${aws_instance.attack-server.public_ip}"
+    description = "Public IP of Attacking Linux Team Server. SSH to this using your private key and start Covenant / Cobalt and then SSH port forward to interact."
+}
+
+output "timestamp" {
+    value = formatdate("hh:mm", timestamp())
+}
+
+# Apply our DSC via SSM to first-dc
+resource "aws_ssm_association" "first-dc" {
+    name             = "AWS-ApplyDSCMofs"
+    association_name = "${terraform.workspace}-First-DC"
+    targets {
+        key    = "InstanceIds"
+        values = [aws_instance.first-dc.id]
+    }
+    parameters = {
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/First.mof"
+        RebootBehavior = "Immediately"
+    }
+}
+
+# Apply our DSC via SSM to second-dc
+resource "aws_ssm_association" "second-dc" {
+    name             = "AWS-ApplyDSCMofs"
+    association_name = "${terraform.workspace}-Second-DC"
+    targets {
+        key    = "InstanceIds"
+        values = [aws_instance.second-dc.id]
+    }
+    parameters = {
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/Second.mof"
+        RebootBehavior = "Immediately"
+  }
+}
+
+# Apply our DSC via SSM to User-Server
+resource "aws_ssm_association" "user-server" {
+    name             = "AWS-ApplyDSCMofs"
+    association_name = "${terraform.workspace}-User-Server"
+    targets {
+        key    = "InstanceIds"
+        values = [aws_instance.user-server.id]
+    }
+    parameters = {
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/UserServer.mof"
+        RebootBehavior = "Immediately"
+    }
 }
