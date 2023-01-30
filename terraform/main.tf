@@ -111,8 +111,8 @@ resource "aws_instance" "user-server" {
     ]
 }
 
-# The C2 teamserver
-resource "aws_instance" "attack-server" {
+# The attack machine
+resource "aws_instance" "attack-machine" {
     ami                         = var.DEBIAN_AMI
     instance_type               = "t2.small"
     key_name                    = aws_key_pair.terraformkey.key_name
@@ -122,7 +122,7 @@ resource "aws_instance" "attack-server" {
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-Attack-Server"
+        Name      = "${terraform.workspace}-Attack-Machine"
     }
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
@@ -130,10 +130,10 @@ resource "aws_instance" "attack-server" {
 }
 
 # Provisions the attack machine
-resource "null_resource" "attack-server-setup" {
+resource "null_resource" "attack-machine-setup" {
     connection {
         type        = "ssh"
-        host        = aws_instance.attack-server.public_ip
+        host        = aws_instance.attack-machine.public_ip
         user        = "admin"
         port        = "22"
         private_key = file(var.PRIVATE_KEY_PATH)
@@ -293,9 +293,9 @@ output "user-server_ip" {
     description = "Public IP of User Server"
 }
 
-output "attack-server_ip" {
-    value       = "${aws_instance.attack-server.public_ip}"
-    description = "Public IP of Attacking Linux Team Server. SSH to this using your private key and start Covenant / Cobalt and then SSH port forward to interact."
+output "attack-machine" {
+    value       = "${aws_instance.attack-machine.public_ip}"
+    description = "Public IP of the Attacking Linux Machine. SSH to this using your private key and start Covenant / Cobalt and then SSH port forward to interact."
 }
 
 output "timestamp" {
