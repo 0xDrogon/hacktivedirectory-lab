@@ -7,7 +7,7 @@ provider "aws" {
 # Our AWS keypair
 resource "aws_key_pair" "terraformkey" {
     key_name   = "${terraform.workspace}-terraform-lab"
-    public_key = file(var.TERRAFORM_PUBLIC_KEY_PATH)
+    public_key = file(var.PUBLIC_KEY_PATH)
 }
 
 # Our VPC definition, using a default IP range of 10.0.0.0/16
@@ -32,10 +32,8 @@ resource "aws_internet_gateway" "lab-vpc-gateway" {
 # Create our first subnet (Defaults to 10.0.1.0/24)
 resource "aws_subnet" "first-vpc-subnet" {
     vpc_id = aws_vpc.lab-vpc.id
-
     cidr_block        = var.FIRST_SUBNET_CIDR
     availability_zone = "eu-west-1a"
-
     tags = {
         Name = "First Subnet"
     }
@@ -48,7 +46,6 @@ resource "aws_vpc_dhcp_options" "first-dhcp" {
     ntp_servers          = [var.FIRST_DC_IP]
     netbios_name_servers = [var.FIRST_DC_IP]
     netbios_node_type    = 2
-
     tags = {
         Name = "First DHCP"
     }
@@ -69,12 +66,10 @@ resource "aws_instance" "first-dc" {
     subnet_id                   = aws_subnet.first-vpc-subnet.id
     private_ip                  = var.FIRST_DC_IP
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
-
     tags = {
         Workspace = "${terraform.workspace}"
         Name      = "${terraform.workspace}-First-DC"
     }
-
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
     ]
@@ -89,12 +84,10 @@ resource "aws_instance" "second-dc" {
     subnet_id                   = aws_subnet.first-vpc-subnet.id
     private_ip                  = var.SECOND_DC_IP
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
-
     tags = {
         Workspace = "${terraform.workspace}"
         Name      = "${terraform.workspace}-Second-DC"
     }
-
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
     ]
@@ -109,12 +102,10 @@ resource "aws_instance" "user-server" {
     subnet_id                   = aws_subnet.first-vpc-subnet.id
     private_ip                  = var.USER_SERVER_IP
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
-
     tags = {
         Workspace = "${terraform.workspace}"
         Name      = "${terraform.workspace}-User-Server"
     }
-
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
     ]
@@ -129,36 +120,72 @@ resource "aws_instance" "attack-server" {
     subnet_id                   = aws_subnet.first-vpc-subnet.id
     private_ip                  = var.ATTACK_SERVER_IP
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
-
     tags = {
         Workspace = "${terraform.workspace}"
         Name      = "${terraform.workspace}-Attack-Server"
     }
-
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
     ]
 }
 
+# Provisions the attack machine
+resource "null_resource" "attack-server-setup" {
+    connection {
+        type        = "ssh"
+        host        = aws_instance.attack-server.public_ip
+        user        = "admin"
+        port        = "22"
+        private_key = file(var.PRIVATE_KEY_PATH)
+        agent       = false
+    }
+
+    provisioner "remote-exec" {
+        inline = [
+        "sudo apt update",
+        "sudo apt install -y apt-transport-https",
+        "sudo apt install -y git",
+        "sudo apt install -y python3-pip",
+        "sudo apt update",
+
+        # Installs Proxychains
+        "sudo apt install -y proxychains4",
+
+        # Installs Nmap
+        "sudo apt install -y nmap",
+
+        # Installs Responder
+        "git clone https://github.com/lgandx/Responder.git",
+        
+        # Installs Impacket
+        "git clone https://github.com/fortra/impacket.git",
+        "cd impacket",
+        "sudo python3 -m pip install --upgrade pip",
+        "sudo python3 -m pip install .",
+        "cd ../"
+        ]
+    }
+}
+
 # IAM Role required to access SSM from EC2
 resource "aws_iam_role" "ssm_role" {
-  name               = "${terraform.workspace}_ssm_role_default"
-  count              = 1
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
+    name               = "${terraform.workspace}_ssm_role_default"
+    count              = 1
+    assume_role_policy = <<EOF
     {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-      },
-      "Effect": "Allow",
-      "Sid": ""
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+        "Action": "sts:AssumeRole",
+        "Principal": {
+            "Service": "ec2.amazonaws.com"
+        },
+        "Effect": "Allow",
+        "Sid": ""
+        }
+    ]
     }
-  ]
-}
-EOF
+    EOF
 }
 
 resource "aws_iam_role_policy_attachment" "ssm_role_policy" {
@@ -174,14 +201,12 @@ resource "aws_iam_instance_profile" "ssm_instance_profile" {
 # Security group for adlab.local
 resource "aws_security_group" "first-sg" {
     vpc_id = aws_vpc.lab-vpc.id
-
     ingress {
         protocol    = "-1"
         cidr_blocks = [var.FIRST_SUBNET_CIDR]
         from_port   = 0
         to_port     = 0
     }
-
     # Allow management from our IP
     ingress {
         protocol    = "-1"
@@ -189,7 +214,6 @@ resource "aws_security_group" "first-sg" {
         from_port   = 0
         to_port     = 0
     }
-
     # Allow global outbound
     egress {
         protocol    = "-1"
