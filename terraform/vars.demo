@@ -9,11 +9,11 @@ variable "AWS_SECRET_KEY_PATH" {
     default = "./keys/secret_key"
 }
 
-variable "TERRAFORM_PUBLIC_KEY_PATH" {
+variable "PUBLIC_KEY_PATH" {
     default = "./keys/terraform_key.pub"
 }
 
-variable "TERRAFORM_PRIVATE_KEY_PATH" {
+variable "PRIVATE_KEY_PATH" {
     default = "./keys/terraform_key.pem"
 }
 
@@ -61,12 +61,4 @@ variable "DEBIAN_AMI" {
 variable "SSM_S3_BUCKET" {
     # Add in the name of your S3 bucket like the example below
     # default = "this-is-just-a-fake-bucket"
-}
-
-data "http" "ip" {
-    url = "https://ifconfig.me/ip"
-}
-
-output "ip" {
-    value = data.http.ip.response_body
 }
