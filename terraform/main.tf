@@ -39,9 +39,19 @@ resource "aws_subnet" "first-vpc-subnet" {
     }
 }
 
+# Create our second subnet (Defaults to 10.0.2.0/24)
+resource "aws_subnet" "second-vpc-subnet" {
+    vpc_id = aws_vpc.lab-vpc.id
+    cidr_block        = var.SECOND_SUBNET_CIDR
+    availability_zone = "eu-west-1a"
+    tags = {
+        Name = "Second Subnet"
+    }
+}
+
 # Set DHCP options for delivering things like DNS servers
 resource "aws_vpc_dhcp_options" "first-dhcp" {
-    domain_name          = "adlab.local"
+    domain_name          = "first.local"
     domain_name_servers  = [var.FIRST_DC_IP, var.PUBLIC_DNS]
     ntp_servers          = [var.FIRST_DC_IP]
     netbios_name_servers = [var.FIRST_DC_IP]
@@ -57,9 +67,9 @@ resource "aws_vpc_dhcp_options_association" "first-dhcp-assoc" {
     dhcp_options_id = aws_vpc_dhcp_options.first-dhcp.id
 }
 
-# First domain controller of the "adlab.local" domain
+# Our first domain controller of the "first.local" domain
 resource "aws_instance" "first-dc" {
-    ami                         = var.WINDOWS_SERVER_AMI
+    ami                         = data.aws_ami.latest-windows-server.image_id
     instance_type               = "t2.small"
     key_name                    = aws_key_pair.terraformkey.key_name
     associate_public_ip_address = true
@@ -75,27 +85,9 @@ resource "aws_instance" "first-dc" {
     ]
 }
 
-# Second domain controller of the "adlab.local" domain
-resource "aws_instance" "second-dc" {
-    ami                         = var.WINDOWS_SERVER_AMI
-    instance_type               = "t2.small"
-    key_name                    = aws_key_pair.terraformkey.key_name
-    associate_public_ip_address = true
-    subnet_id                   = aws_subnet.first-vpc-subnet.id
-    private_ip                  = var.SECOND_DC_IP
-    iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
-    tags = {
-        Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-Second-DC"
-    }
-    vpc_security_group_ids = [
-        aws_security_group.first-sg.id,
-    ]
-}
-
 # The User server which will be main foothold
 resource "aws_instance" "user-server" {
-    ami                         = var.WINDOWS_SERVER_AMI
+    ami                         = data.aws_ami.latest-windows-server.image_id
     instance_type               = "t2.small"
     key_name                    = aws_key_pair.terraformkey.key_name
     associate_public_ip_address = true
@@ -111,9 +103,27 @@ resource "aws_instance" "user-server" {
     ]
 }
 
-# The attack machine
-resource "aws_instance" "attack-machine" {
-    ami                         = var.DEBIAN_AMI
+# Our second domain controller of the "second.local" domain
+resource "aws_instance" "second-dc" {
+    ami                         = data.aws_ami.latest-windows-server.image_id
+    instance_type               = "t2.small"
+    key_name                    = aws_key_pair.terraformkey.key_name
+    associate_public_ip_address = true
+    subnet_id                   = aws_subnet.first-vpc-subnet.id
+    private_ip                  = var.SECOND_DC_IP
+    iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
+    tags = {
+        Workspace = "${terraform.workspace}"
+        Name      = "${terraform.workspace}-Second-DC"
+    }
+    vpc_security_group_ids = [
+        aws_security_group.first-sg.id,
+    ]
+}
+
+# The C2 teamserver
+resource "aws_instance" "attack-server" {
+    ami                         = data.aws_ami.latest-debian.image_id
     instance_type               = "t2.small"
     key_name                    = aws_key_pair.terraformkey.key_name
     associate_public_ip_address = true
@@ -122,24 +132,22 @@ resource "aws_instance" "attack-machine" {
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-Attack-Machine"
+        Name      = "${terraform.workspace}-Attack-Server"
     }
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
     ]
 }
 
-# Provisions the attack machine
-resource "null_resource" "attack-machine-setup" {
+resource "null_resource" "attack-server-setup" {
     connection {
         type        = "ssh"
-        host        = aws_instance.attack-machine.public_ip
+        host        = aws_instance.attack-server.public_ip
         user        = "admin"
         port        = "22"
         private_key = file(var.PRIVATE_KEY_PATH)
         agent       = false
     }
-
     provisioner "remote-exec" {
         inline = [
         "sudo apt update",
@@ -198,9 +206,16 @@ resource "aws_iam_instance_profile" "ssm_instance_profile" {
     role  = aws_iam_role.ssm_role.0.name
 }
 
-# Security group for adlab.local
+# Security group for first.local
 resource "aws_security_group" "first-sg" {
     vpc_id = aws_vpc.lab-vpc.id
+    # Allow second zone to first
+    ingress {
+        protocol    = "-1"
+        cidr_blocks = [var.SECOND_SUBNET_CIDR]
+        from_port   = 0
+        to_port     = 0
+    }
     ingress {
         protocol    = "-1"
         cidr_blocks = [var.FIRST_SUBNET_CIDR]
@@ -208,6 +223,38 @@ resource "aws_security_group" "first-sg" {
         to_port     = 0
     }
     # Allow management from our IP
+    ingress {
+        protocol    = "-1"
+        cidr_blocks = var.MANAGEMENT_IPS
+        from_port   = 0
+        to_port     = 0
+    }
+    # Allow global outbound
+    egress {
+        protocol    = "-1"
+        cidr_blocks = ["0.0.0.0/0"]
+        from_port   = 0
+        to_port     = 0
+    }
+}
+
+# Security group for second.local
+resource "aws_security_group" "second-sg" {
+    vpc_id = aws_vpc.lab-vpc.id
+    # Allow secure zone to first
+    ingress {
+        protocol    = "-1"
+        cidr_blocks = [var.FIRST_SUBNET_CIDR]
+        from_port   = 0
+        to_port     = 0
+    }
+    ingress {
+        protocol    = "-1"
+        cidr_blocks = [var.SECOND_SUBNET_CIDR]
+        from_port   = 0
+        to_port     = 0
+    }
+    # Allow management from Our IP
     ingress {
         protocol    = "-1"
         cidr_blocks = var.MANAGEMENT_IPS
@@ -254,6 +301,12 @@ resource "aws_ssm_parameter" "admin-ssm-parameter" {
     value = "{\"Username\":\"admin\", \"Password\":\"Password@1\"}"
 }
 
+resource "aws_ssm_parameter" "local-user-ssm-parameter" {
+    name  = "local-user"
+    type  = "SecureString"
+    value = "{\"Username\":\"local-user\", \"Password\":\"Password@1\"}"
+}
+
 resource "aws_ssm_parameter" "first-admin-ssm-parameter" {
     name  = "first-admin"
     type  = "SecureString"
@@ -263,19 +316,97 @@ resource "aws_ssm_parameter" "first-admin-ssm-parameter" {
 resource "aws_ssm_parameter" "regular-user-ssm-parameter" {
     name  = "regular.user"
     type  = "SecureString"
-    value = "{\"Username\":\"regular.user\", \"Password\":\"Password@3\"}"
+    value = "{\"Username\":\"regular.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "dnsadmin-user-ssm-parameter" {
+    name  = "dnsadmin.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"dnsadmin.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "unconstrainer-user-ssm-parameter" {
+    name  = "unconstrained.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"unconstrained.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "constrained-user-ssm-parameter" {
+    name  = "constrained.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"constrained.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "userwrite-user-ssm-parameter" {
+    name  = "userwrite.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"userwrite.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "userall-user-ssm-parameter" {
+    name  = "userall.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"userall.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "compwrite-user-ssm-parameter" {
+    name  = "compwrite.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"compwrite.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "gpowrite-user-ssm-parameter" {
+    name  = "gpowrite.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"gpowrite.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "lapsread-user-ssm-parameter" {
+    name  = "lapsread.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"lapsread.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "groupwrite-user-ssm-parameter" {
+    name  = "groupwrite.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"groupwrite.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "writedacldc-user-ssm-parameter" {
+    name  = "writedacldc.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"writedacldc.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "readgmsa-user-ssm-parameter" {
+    name  = "readgmsa.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"readgmsa.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "clearpass-user-ssm-parameter" {
+    name  = "clearpass.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"clearpass.user\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "dcsync-user-ssm-parameter" {
+    name  = "dcsync.user"
+    type  = "SecureString"
+    value = "{\"Username\":\"dcsync.user\", \"Password\":\"Password@1\"}"
 }
 
 resource "aws_ssm_parameter" "roast-user-ssm-parameter" {
     name  = "roast.user"
     type  = "SecureString"
-    value = "{\"Username\":\"roast.user\", \"Password\":\"Password@4\"}"
+    value = "{\"Username\":\"roast.user\", \"Password\":\"Password@1\"}"
 }
 
 resource "aws_ssm_parameter" "asrep-user-ssm-parameter" {
     name  = "asrep.user"
     type  = "SecureString"
-    value = "{\"Username\":\"asrep.user\", \"Password\":\"Password@5\"}"
+    value = "{\"Username\":\"asrep.user\", \"Password\":\"Password@1\"}"
 }
 
 output "first-dc_ip" {
@@ -283,26 +414,26 @@ output "first-dc_ip" {
     description = "Public IP of First-DC"
 }
 
-output "second-dc_ip" {
-    value       = "${aws_instance.second-dc.public_ip}"
-    description = "Public IP of Second-DC"
-}
-
 output "user-server_ip" {
     value       = "${aws_instance.user-server.public_ip}"
     description = "Public IP of User Server"
 }
 
-output "attack-machine" {
-    value       = "${aws_instance.attack-machine.public_ip}"
-    description = "Public IP of the Attacking Linux Machine. SSH to this using your private key and start Covenant / Cobalt and then SSH port forward to interact."
+output "attack-server_ip" {
+    value       = "${aws_instance.attack-server.public_ip}"
+    description = "Public IP of Attacking Linux Team Server. SSH to this using your private key and start Covenant / Cobalt and then SSH port forward to interact."
+}
+
+output "second-dc_ip" {
+    value       = "${aws_instance.second-dc.public_ip}"
+    description = "Public IP of Second-DC"
 }
 
 output "timestamp" {
     value = formatdate("hh:mm", timestamp())
 }
 
-# Apply our DSC via SSM to first-dc
+# Apply our DSC via SSM to first.local
 resource "aws_ssm_association" "first-dc" {
     name             = "AWS-ApplyDSCMofs"
     association_name = "${terraform.workspace}-First-DC"
@@ -316,7 +447,7 @@ resource "aws_ssm_association" "first-dc" {
     }
 }
 
-# Apply our DSC via SSM to second-dc
+# Apply our DSC via SSM to second.local
 resource "aws_ssm_association" "second-dc" {
     name             = "AWS-ApplyDSCMofs"
     association_name = "${terraform.workspace}-Second-DC"
@@ -327,7 +458,7 @@ resource "aws_ssm_association" "second-dc" {
     parameters = {
         MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/Second.mof"
         RebootBehavior = "Immediately"
-  }
+    }
 }
 
 # Apply our DSC via SSM to User-Server
