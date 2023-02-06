@@ -25,20 +25,24 @@ variable "FIRST_SUBNET_CIDR" {
     default = "10.0.1.0/24"
 }
 
+variable "SECOND_SUBNET_CIDR" {
+    default = "10.0.2.0/24"
+}
+
 variable "FIRST_DC_IP" {
-    default = "10.0.1.101"
+    default = "10.0.1.100"
 }
 
 variable "SECOND_DC_IP" {
-    default = "10.0.1.102"
+    default = "10.0.1.200"
 }
 
 variable "USER_SERVER_IP" {
-  default = "10.0.1.50"
+    default = "10.0.1.50"
 }
 
 variable "ATTACK_SERVER_IP" {
-  default = "10.0.1.10"
+    default = "10.0.1.10"
 }
 
 variable "PUBLIC_DNS" {
@@ -50,15 +54,31 @@ variable "MANAGEMENT_IPS" {
     # default = ["1.2.3.4/32"]
 }
 
-variable "WINDOWS_SERVER_AMI" {
-    default = "ami-051148891ab67c55e"
-}
-
-variable "DEBIAN_AMI" {
-    default = "ami-03c5ca432499db74d"
-}
-
 variable "SSM_S3_BUCKET" {
     # Add in the name of your S3 bucket like the example below
     # default = "this-is-just-a-fake-bucket"
+}
+
+# Find latest Windows-Server
+data "aws_ami" "latest-windows-server" {
+    most_recent = true
+    owners      = ["amazon"]
+    filter {
+        name   = "name"
+        values = ["Windows_Server-2019-English-Full-Base-*"]
+    }
+}
+
+# Find latest Debian
+data "aws_ami" "latest-debian" {
+    most_recent = true
+    owners = ["136693071363"]
+    filter {
+        name   = "name"
+        values = ["debian-10-amd64-*"]
+    }
+    filter {
+        name   = "architecture"
+        values = ["x86_64"]
+    }
 }
