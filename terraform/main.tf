@@ -32,34 +32,36 @@ resource "aws_internet_gateway" "lab-vpc-gateway" {
 # Create our first subnet (Defaults to 10.0.1.0/24)
 resource "aws_subnet" "first-vpc-subnet" {
     vpc_id = aws_vpc.lab-vpc.id
-    cidr_block        = var.FIRST_SUBNET_CIDR
+    cidr_block        = var.FSOCIETY_SUBNET_CIDR
     availability_zone = "eu-west-1a"
     tags = {
-        Name = "First Subnet"
+        Name = "Fsociety Subnet"
     }
 }
 
 # Create our second subnet (Defaults to 10.0.2.0/24)
 resource "aws_subnet" "second-vpc-subnet" {
     vpc_id = aws_vpc.lab-vpc.id
-    cidr_block        = var.SECOND_SUBNET_CIDR
+    cidr_block        = var.ECORP_SUBNET_CIDR
     availability_zone = "eu-west-1a"
     tags = {
-        Name = "Second Subnet"
+        Name = "Ecorp Subnet"
     }
 }
 
 # Set DHCP options for delivering things like DNS servers
 resource "aws_vpc_dhcp_options" "first-dhcp" {
-    domain_name          = "first.local"
-    domain_name_servers  = [var.FIRST_DC_IP, var.PUBLIC_DNS]
-    ntp_servers          = [var.FIRST_DC_IP]
-    netbios_name_servers = [var.FIRST_DC_IP]
+    domain_name          = "fsociety.local"
+    domain_name_servers  = [var.FSOCIETY_DC_IP, var.PUBLIC_DNS]
+    ntp_servers          = [var.FSOCIETY_DC_IP]
+    netbios_name_servers = [var.FSOCIETY_DC_IP]
     netbios_node_type    = 2
     tags = {
-        Name = "First DHCP"
+        Name = "Fsociety DHCP"
     }
 }
+
+# Add for second ???
 
 # Associate our DHCP configuration with our VPC
 resource "aws_vpc_dhcp_options_association" "first-dhcp-assoc" {
@@ -67,18 +69,18 @@ resource "aws_vpc_dhcp_options_association" "first-dhcp-assoc" {
     dhcp_options_id = aws_vpc_dhcp_options.first-dhcp.id
 }
 
-# Our first domain controller of the "first.local" domain
-resource "aws_instance" "first-dc" {
+# Our first domain controller of the "fsociety.local" domain
+resource "aws_instance" "fsociety-dc" {
     ami                         = data.aws_ami.latest-windows-server.image_id
     instance_type               = "t2.small"
     key_name                    = aws_key_pair.terraformkey.key_name
     associate_public_ip_address = true
     subnet_id                   = aws_subnet.first-vpc-subnet.id
-    private_ip                  = var.FIRST_DC_IP
+    private_ip                  = var.FSOCIETY_DC_IP
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-First-DC"
+        Name      = "${terraform.workspace}-Fsociety-DC"
     }
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
@@ -86,63 +88,117 @@ resource "aws_instance" "first-dc" {
 }
 
 # The User server which will be main foothold
-resource "aws_instance" "user-server" {
+resource "aws_instance" "fsociety-server" {
     ami                         = data.aws_ami.latest-windows-server.image_id
     instance_type               = "t2.small"
     key_name                    = aws_key_pair.terraformkey.key_name
     associate_public_ip_address = true
     subnet_id                   = aws_subnet.first-vpc-subnet.id
-    private_ip                  = var.USER_SERVER_IP
+    private_ip                  = var.FSOCIETY_SERVER_IP
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-User-Server"
+        Name      = "${terraform.workspace}-Fsociety-Server"
     }
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
     ]
 }
 
-# Our second domain controller of the "second.local" domain
-resource "aws_instance" "second-dc" {
+# The User server which will be main foothold
+resource "aws_instance" "fsociety-workstation" {
     ami                         = data.aws_ami.latest-windows-server.image_id
     instance_type               = "t2.small"
     key_name                    = aws_key_pair.terraformkey.key_name
     associate_public_ip_address = true
     subnet_id                   = aws_subnet.first-vpc-subnet.id
-    private_ip                  = var.SECOND_DC_IP
+    private_ip                  = var.FSOCIETY_WORKSTATION_IP
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-Second-DC"
+        Name      = "${terraform.workspace}-Fsociety-Workstation"
     }
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
+    ]
+}
+
+# Our second domain controller of the "ecorp.local" domain
+resource "aws_instance" "ecorp-dc" {
+    ami                         = data.aws_ami.latest-windows-server.image_id
+    instance_type               = "t2.small"
+    key_name                    = aws_key_pair.terraformkey.key_name
+    associate_public_ip_address = true
+    subnet_id                   = aws_subnet.second-vpc-subnet.id
+    private_ip                  = var.ECORP_DC_IP
+    iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
+    tags = {
+        Workspace = "${terraform.workspace}"
+        Name      = "${terraform.workspace}-Ecorp-DC"
+    }
+    vpc_security_group_ids = [
+        aws_security_group.second-sg.id,
+    ]
+}
+
+# The User server which will be main foothold
+resource "aws_instance" "ecorp-server" {
+    ami                         = data.aws_ami.latest-windows-server.image_id
+    instance_type               = "t2.small"
+    key_name                    = aws_key_pair.terraformkey.key_name
+    associate_public_ip_address = true
+    subnet_id                   = aws_subnet.second-vpc-subnet.id
+    private_ip                  = var.ECORP_SERVER_IP
+    iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
+    tags = {
+        Workspace = "${terraform.workspace}"
+        Name      = "${terraform.workspace}-Ecorp-Server"
+    }
+    vpc_security_group_ids = [
+        aws_security_group.second-sg.id,
+    ]
+}
+
+# The User server which will be main foothold
+resource "aws_instance" "ecorp-workstation" {
+    ami                         = data.aws_ami.latest-windows-server.image_id
+    instance_type               = "t2.small"
+    key_name                    = aws_key_pair.terraformkey.key_name
+    associate_public_ip_address = true
+    subnet_id                   = aws_subnet.second-vpc-subnet.id
+    private_ip                  = var.ECORP_WORKSTATION_IP
+    iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
+    tags = {
+        Workspace = "${terraform.workspace}"
+        Name      = "${terraform.workspace}-Ecorp-Workstation"
+    }
+    vpc_security_group_ids = [
+        aws_security_group.second-sg.id,
     ]
 }
 
 # The C2 teamserver
-resource "aws_instance" "attack-server" {
+resource "aws_instance" "attacker" {
     ami                         = data.aws_ami.latest-debian.image_id
     instance_type               = "t2.small"
     key_name                    = aws_key_pair.terraformkey.key_name
     associate_public_ip_address = true
     subnet_id                   = aws_subnet.first-vpc-subnet.id
-    private_ip                  = var.ATTACK_SERVER_IP
+    private_ip                  = var.ATTACKER_IP
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-Attack-Server"
+        Name      = "${terraform.workspace}-Attacker"
     }
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
     ]
 }
 
-resource "null_resource" "attack-server-setup" {
+resource "null_resource" "attacker-setup" {
     connection {
         type        = "ssh"
-        host        = aws_instance.attack-server.public_ip
+        host        = aws_instance.attacker.public_ip
         user        = "admin"
         port        = "22"
         private_key = file(var.PRIVATE_KEY_PATH)
@@ -212,13 +268,13 @@ resource "aws_security_group" "first-sg" {
     # Allow second zone to first
     ingress {
         protocol    = "-1"
-        cidr_blocks = [var.SECOND_SUBNET_CIDR]
+        cidr_blocks = [var.ECORP_SUBNET_CIDR]
         from_port   = 0
         to_port     = 0
     }
     ingress {
         protocol    = "-1"
-        cidr_blocks = [var.FIRST_SUBNET_CIDR]
+        cidr_blocks = [var.FSOCIETY_SUBNET_CIDR]
         from_port   = 0
         to_port     = 0
     }
@@ -244,13 +300,13 @@ resource "aws_security_group" "second-sg" {
     # Allow secure zone to first
     ingress {
         protocol    = "-1"
-        cidr_blocks = [var.FIRST_SUBNET_CIDR]
+        cidr_blocks = [var.FSOCIETY_SUBNET_CIDR]
         from_port   = 0
         to_port     = 0
     }
     ingress {
         protocol    = "-1"
-        cidr_blocks = [var.SECOND_SUBNET_CIDR]
+        cidr_blocks = [var.ECORP_SUBNET_CIDR]
         from_port   = 0
         to_port     = 0
     }
@@ -270,28 +326,52 @@ resource "aws_security_group" "second-sg" {
     }
 }
 
-# Add first.local MOF's to S3
-resource "aws_s3_bucket_object" "first-dc-mof" {
+# Add fsociety.local MOF's to S3
+resource "aws_s3_bucket_object" "fsociety-dc-mof" {
     bucket     = var.SSM_S3_BUCKET
-    key        = "Lab/First.mof"
-    source     = "../dsc/Lab/First.mof"
-    etag       = filemd5("../dsc/Lab/First.mof")
-}
-
-# Add second.local MOF's to S3
-resource "aws_s3_bucket_object" "second-dc-mof" {
-    bucket     = var.SSM_S3_BUCKET
-    key        = "Lab/Second.mof"
-    source     = "../dsc/Lab/Second.mof"
-    etag       = filemd5("../dsc/Lab/Second.mof")
+    key        = "Lab/FsocietyDC.mof"
+    source     = "../dsc/Lab/FsocietyDC.mof"
+    etag       = filemd5("../dsc/Lab/FsocietyDC.mof")
 }
 
 # Add userserver MOF's to S3
-resource "aws_s3_bucket_object" "user-server-mof" {
+resource "aws_s3_bucket_object" "fsociety-server-mof" {
     bucket     = var.SSM_S3_BUCKET
-    key        = "Lab/UserServer.mof"
-    source     = "../dsc/Lab/UserServer.mof"
-    etag       = filemd5("../dsc/Lab/UserServer.mof")
+    key        = "Lab/FsocietyServer.mof"
+    source     = "../dsc/Lab/FsocietyServer.mof"
+    etag       = filemd5("../dsc/Lab/FsocietyServer.mof")
+}
+
+# Add userserver MOF's to S3
+resource "aws_s3_bucket_object" "fsociety-workstation-mof" {
+    bucket     = var.SSM_S3_BUCKET
+    key        = "Lab/FsocietyWorkstation.mof"
+    source     = "../dsc/Lab/FsocietyWorkstation.mof"
+    etag       = filemd5("../dsc/Lab/FsocietyWorkstation.mof")
+}
+
+# Add ecorp.local MOF's to S3
+resource "aws_s3_bucket_object" "ecorp-dc-mof" {
+    bucket     = var.SSM_S3_BUCKET
+    key        = "Lab/EcorpDC.mof"
+    source     = "../dsc/Lab/EcorpDC.mof"
+    etag       = filemd5("../dsc/Lab/EcorpDC.mof")
+}
+
+# Add userserver MOF's to S3
+resource "aws_s3_bucket_object" "ecorp-server-mof" {
+    bucket     = var.SSM_S3_BUCKET
+    key        = "Lab/EcorpServer.mof"
+    source     = "../dsc/Lab/EcorpServer.mof"
+    etag       = filemd5("../dsc/Lab/EcorpServer.mof")
+}
+
+# Add userserver MOF's to S3
+resource "aws_s3_bucket_object" "ecorp-workstation-mof" {
+    bucket     = var.SSM_S3_BUCKET
+    key        = "Lab/EcorpWorkstation.mof"
+    source     = "../dsc/Lab/EcorpWorkstation.mof"
+    etag       = filemd5("../dsc/Lab/EcorpWorkstation.mof")
 }
 
 # SSM parameters used by DSC
@@ -301,22 +381,34 @@ resource "aws_ssm_parameter" "admin-ssm-parameter" {
     value = "{\"Username\":\"admin\", \"Password\":\"Password@1\"}"
 }
 
-resource "aws_ssm_parameter" "local-user-ssm-parameter" {
-    name  = "local-user"
+resource "aws_ssm_parameter" "server-user-ssm-parameter" {
+    name  = "server-user"
     type  = "SecureString"
-    value = "{\"Username\":\"local-user\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"server-user\", \"Password\":\"Password@1\"}"
 }
 
-resource "aws_ssm_parameter" "first-admin-ssm-parameter" {
-    name  = "first-admin"
+resource "aws_ssm_parameter" "workstation-user-ssm-parameter" {
+    name  = "workstation-user"
     type  = "SecureString"
-    value = "{\"Username\":\"first.local\\\\admin\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"workstation-user\", \"Password\":\"Password@1\"}"
 }
 
-resource "aws_ssm_parameter" "regular-user-ssm-parameter" {
-    name  = "regular.user"
+resource "aws_ssm_parameter" "fsociety-admin-ssm-parameter" {
+    name  = "fsociety-admin"
     type  = "SecureString"
-    value = "{\"Username\":\"regular.user\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"fsociety.local\\\\admin\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "ecorp-admin-ssm-parameter" {
+    name  = "ecorp-admin"
+    type  = "SecureString"
+    value = "{\"Username\":\"ecorp.local\\\\admin\", \"Password\":\"Password@1\"}"
+}
+
+resource "aws_ssm_parameter" "mr-robot-ssm-parameter" {
+    name  = "mr.robot"
+    type  = "SecureString"
+    value = "{\"Username\":\"mr.robot\", \"Password\":\"Password@1\"}"
 }
 
 resource "aws_ssm_parameter" "dnsadmin-user-ssm-parameter" {
@@ -409,68 +501,143 @@ resource "aws_ssm_parameter" "asrep-user-ssm-parameter" {
     value = "{\"Username\":\"asrep.user\", \"Password\":\"Password@1\"}"
 }
 
-output "first-dc_ip" {
-    value       = "${aws_instance.first-dc.public_ip}"
-    description = "Public IP of First-DC"
+resource "aws_ssm_parameter" "phillip-price-ssm-parameter" {
+    name  = "phillip.price"
+    type  = "SecureString"
+    value = "{\"Username\":\"phillip.price\", \"Password\":\"Password@1\"}"
 }
 
-output "user-server_ip" {
-    value       = "${aws_instance.user-server.public_ip}"
-    description = "Public IP of User Server"
+resource "aws_ssm_parameter" "tyrell-wellick-ssm-parameter" {
+    name  = "tyrell.wellick"
+    type  = "SecureString"
+    value = "{\"Username\":\"tyrell.wellick\", \"Password\":\"Password@1\"}"
 }
 
-output "attack-server_ip" {
-    value       = "${aws_instance.attack-server.public_ip}"
-    description = "Public IP of Attacking Linux Team Server. SSH to this using your private key and start Covenant / Cobalt and then SSH port forward to interact."
+resource "aws_ssm_parameter" "angela-moss-ssm-parameter" {
+    name  = "angela.moss"
+    type  = "SecureString"
+    value = "{\"Username\":\"angela.moss\", \"Password\":\"Password@1\"}"
 }
 
-output "second-dc_ip" {
-    value       = "${aws_instance.second-dc.public_ip}"
-    description = "Public IP of Second-DC"
+output "fsociety-dc_ip" {
+    value       = "${aws_instance.fsociety-dc.public_ip}"
+    description = "Public IP of Fsociety-DC"
+}
+
+output "fsociety-server_ip" {
+    value       = "${aws_instance.fsociety-server.public_ip}"
+    description = "Public IP of Fsociety-Server"
+}
+
+output "fsociety-workstation_ip" {
+    value       = "${aws_instance.fsociety-workstation.public_ip}"
+    description = "Public IP of Fsociety-Workstation"
+}
+
+output "ecorp-dc_ip" {
+    value       = "${aws_instance.ecorp-dc.public_ip}"
+    description = "Public IP of Ecorp-DC"
+}
+
+output "ecorp-server_ip" {
+    value       = "${aws_instance.ecorp-server.public_ip}"
+    description = "Public IP of Ecorp-Server"
+}
+
+output "ecorp-workstation_ip" {
+    value       = "${aws_instance.ecorp-workstation.public_ip}"
+    description = "Public IP of Ecorp-Workstation"
+}
+
+output "attacker_ip" {
+    value       = "${aws_instance.attacker.public_ip}"
+    description = "Public IP of Attacker"
 }
 
 output "timestamp" {
     value = formatdate("hh:mm", timestamp())
 }
 
-# Apply our DSC via SSM to first.local
-resource "aws_ssm_association" "first-dc" {
+# Apply our DSC via SSM to fsociety.local
+resource "aws_ssm_association" "fsociety-dc" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "${terraform.workspace}-First-DC"
+    association_name = "${terraform.workspace}-Fsociety-DC"
     targets {
         key    = "InstanceIds"
-        values = [aws_instance.first-dc.id]
+        values = [aws_instance.fsociety-dc.id]
     }
     parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/First.mof"
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/FsocietyDC.mof"
         RebootBehavior = "Immediately"
     }
 }
 
-# Apply our DSC via SSM to second.local
-resource "aws_ssm_association" "second-dc" {
+# Apply our DSC via SSM to fsociety-server
+resource "aws_ssm_association" "fsociety-server" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "${terraform.workspace}-Second-DC"
+    association_name = "${terraform.workspace}-fsociety-server"
     targets {
         key    = "InstanceIds"
-        values = [aws_instance.second-dc.id]
+        values = [aws_instance.fsociety-server.id]
     }
     parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/Second.mof"
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/FsocietyServer.mof"
         RebootBehavior = "Immediately"
     }
 }
 
-# Apply our DSC via SSM to User-Server
-resource "aws_ssm_association" "user-server" {
+# Apply our DSC via SSM to fsociety-workstation
+resource "aws_ssm_association" "fsociety-workstation" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "${terraform.workspace}-User-Server"
+    association_name = "${terraform.workspace}-fsociety-workstation"
     targets {
         key    = "InstanceIds"
-        values = [aws_instance.user-server.id]
+        values = [aws_instance.fsociety-workstation.id]
     }
     parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/UserServer.mof"
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/FsocietyWorkstation.mof"
+        RebootBehavior = "Immediately"
+    }
+}
+
+# Apply our DSC via SSM to ecorp.local
+resource "aws_ssm_association" "ecorp-dc" {
+    name             = "AWS-ApplyDSCMofs"
+    association_name = "${terraform.workspace}-Ecorp-DC"
+    targets {
+        key    = "InstanceIds"
+        values = [aws_instance.ecorp-dc.id]
+    }
+    parameters = {
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/EcorpDC.mof"
+        RebootBehavior = "Immediately"
+    }
+}
+
+# Apply our DSC via SSM to ecorp-server
+resource "aws_ssm_association" "ecorp-server" {
+    name             = "AWS-ApplyDSCMofs"
+    association_name = "${terraform.workspace}-ecorp-server"
+    targets {
+        key    = "InstanceIds"
+        values = [aws_instance.ecorp-server.id]
+    }
+    parameters = {
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/EcorpServer.mof"
+        RebootBehavior = "Immediately"
+    }
+}
+
+# Apply our DSC via SSM to ecorp-workstation
+resource "aws_ssm_association" "ecorp-workstation" {
+    name             = "AWS-ApplyDSCMofs"
+    association_name = "${terraform.workspace}-ecorp-workstation"
+    targets {
+        key    = "InstanceIds"
+        values = [aws_instance.ecorp-workstation.id]
+    }
+    parameters = {
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/EcorpWorkstation.mof"
         RebootBehavior = "Immediately"
     }
 }
