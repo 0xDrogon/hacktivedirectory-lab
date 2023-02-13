@@ -11,7 +11,9 @@ configuration Lab {
         [Parameter(Mandatory)]
         [string]$secondDomainName,
         [Parameter(Mandatory)]
-        [pscredential]$firstDomainCred
+        [pscredential]$firstDomainCred,
+        [Parameter(Mandatory)]
+        [pscredential]$secondDomainCred
     )
 
     Import-DscResource -ModuleName ActiveDirectoryDsc
@@ -19,10 +21,10 @@ configuration Lab {
     Import-DscResource -ModuleName ComputerManagementDsc
     Import-DscResource -ModuleName PSDesiredStateConfiguration
 
-    Node "First" {
+    Node "FsocietyDC" {
 
         Computer NewName {
-            Name = "First-DC"
+            Name = "Fsociety-DC"
         }
         
         WindowsFeature ADDSInstall {
@@ -78,10 +80,31 @@ configuration Lab {
 
         DnsServerAddress DnsServerAddress
         {
-            Address        = '127.0.0.1'
+            Address        = '127.0.0.1', '10.0.2.100'
             InterfaceAlias = 'Ethernet'
             AddressFamily  = 'IPv4'
             Validate       = $false
+            DependsOn = "[WaitForADDomain]waitFirstDomain"
+        }
+
+        Script SetConditionalForwardedZone {
+            GetScript = { return @{ } }
+
+            TestScript = {
+                $zone = Get-DnsServerZone -Name $using:secondDomainName -ErrorAction SilentlyContinue
+                if ($zone -ne $null -and $zone.ZoneType -eq 'Forwarder') {
+                    return $true
+                }
+
+                return $false
+            }
+
+            SetScript = {
+                $ForwardDomainName = $using:secondDomainName
+                $IpAddresses = @("10.0.2.100")
+                Add-DnsServerConditionalForwarderZone -Name "$ForwardDomainName" -ReplicationScope "Domain" -MasterServers $IpAddresses
+            }
+
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -92,13 +115,13 @@ configuration Lab {
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
-        ADUser 'regular.user'
+        ADUser 'mr.robot'
         {
             Ensure     = 'Present'
-            UserName   = 'regular.user'
-            Password   = (New-Object System.Management.Automation.PSCredential("regular.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            UserName   = 'mr.robot'
+            Password   = (New-Object System.Management.Automation.PSCredential("mr.robot", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -107,8 +130,8 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'dnsadmin.user'
             Password   = (New-Object System.Management.Automation.PSCredential("dnsadmin.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -124,8 +147,8 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'unconstrained.user'
             Password   = (New-Object System.Management.Automation.PSCredential("unconstrained.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -148,8 +171,8 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'constrained.user'
             Password   = (New-Object System.Management.Automation.PSCredential("constrained.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -157,7 +180,7 @@ configuration Lab {
         {
             SetScript = {
                 $user = (Get-ADUser -Identity "constrained.user").DistinguishedName
-                Set-ADObject -Identity $user -Add @{"msDS-AllowedToDelegateTo" = @("CIFS/First-DC","CIFS/First-DC.First.local","CIFS/First-DC.first.local/first.local")}
+                Set-ADObject -Identity $user -Add @{"msDS-AllowedToDelegateTo" = @("CIFS/Fsociety-DC","CIFS/Fsociety-DC.fsociety.local","CIFS/Fsociety-DC.fsociety.local/fsociety.local")}
             }
             TestScript = { 
                 $false 
@@ -168,36 +191,13 @@ configuration Lab {
             DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]constrained.user"
         }
 
-        ADComputer "Constrained.Computer" 
-        {
-            Ensure = "Present"
-            ComputerName = "Suspicious-PC"
-            Path = "CN=Computers,DC=first,DC=local"
-            DependsOn = "[WaitForADDomain]waitFirstDomain"
-        }
-
-        Script "Suspicious-PC constrained Delegation Set"
-        {
-            SetScript = {
-                $comp = (Get-ADComputer -Identity "Suspicious-PC").DistinguishedName
-                Set-ADObject -Identity $comp -Add @{"msDS-AllowedToDelegateTo" = @("HTTP/First-DC","HTTP/First-DC.First.local","HTTP/First-DC.first.local/first.local")}
-            }
-            TestScript = { 
-                $false 
-            }
-            GetScript = { 
-                @{ Result = (Get-ADComputer "Suspicious-PC" ) } 
-            }
-            DependsOn = "[WaitForADDomain]waitFirstDomain"
-        }
-
         ADUser 'userwrite.user'
         {
             Ensure     = 'Present'
             UserName   = 'userwrite.user'
             Password   = (New-Object System.Management.Automation.PSCredential("userwrite.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -230,8 +230,8 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'userall.user'
             Password   = (New-Object System.Management.Automation.PSCredential("userall.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -264,15 +264,15 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'compwrite.user'
             Password   = (New-Object System.Management.Automation.PSCredential("compwrite.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
         Script "compwrite.user Write Permissions on Comp Node"
         {
             SetScript = {
-                $Destination = (Get-ADComputer -Identity "First-DC").DistinguishedName
+                $Destination = (Get-ADComputer -Identity "Fsociety-DC").DistinguishedName
                 $Source = (Get-ADUser -Identity "compwrite.user").sid
                 $Rights = "GenericWrite"
                 $ADObject = [ADSI]("LDAP://" + $Destination)
@@ -298,8 +298,8 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'gpowrite.user'
             Password   = (New-Object System.Management.Automation.PSCredential("gpowrite.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -322,8 +322,8 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'lapsread.user'
             Password   = (New-Object System.Management.Automation.PSCredential("lapsread.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             Description = 'LAPS yet to be implemented'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
@@ -333,8 +333,8 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'groupwrite.user'
             Password   = (New-Object System.Management.Automation.PSCredential("groupwrite.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -367,15 +367,15 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'writedacldc.user'
             Password   = (New-Object System.Management.Automation.PSCredential("writedacldc.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
         Script "writedacldc.user WriteDACL Permissions on DC"
         {
             SetScript = {
-                $Destination = (Get-ADComputer -Identity "First-DC").DistinguishedName
+                $Destination = (Get-ADComputer -Identity "Fsociety-DC").DistinguishedName
                 $Source = (Get-ADUser -Identity "writedacldc.user").sid
                 $Rights = "WriteDACL"
                 $ADObject = [ADSI]("LDAP://" + $Destination)
@@ -401,8 +401,8 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'readgmsa.user'
             Password   = (New-Object System.Management.Automation.PSCredential("readgmsa.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             Description = 'GMSA yet to be implemented'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
@@ -412,8 +412,8 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'clearpass.user'
             Password   = (New-Object System.Management.Automation.PSCredential("clearpass.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -436,9 +436,9 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'roast.user'
             Password   = (New-Object System.Management.Automation.PSCredential("roast.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
-            ServicePrincipalNames = "MSSQL/sql.first.local"
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
+            ServicePrincipalNames = "MSSQL/sql.fsociety.local"
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -447,8 +447,8 @@ configuration Lab {
             Ensure     = 'Present'
             UserName   = 'asrep.user'
             Password   = (New-Object System.Management.Automation.PSCredential("asrep.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'first.local'
-            Path       = 'CN=Users,DC=first,DC=local'
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -466,33 +466,33 @@ configuration Lab {
             DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]asrep"
         }
 
-        Script "User-Server-RDP"
+        Script "Fsociety-Server-RDP"
         {
             SetScript = {
                 Start-Sleep -Seconds 300
-                Invoke-Command -ComputerName "User-Server" -Scriptblock {net localgroup "Remote Desktop Users" "first\domain users" /add}
+                Invoke-Command -ComputerName "Fsociety-Server" -Scriptblock {net localgroup "Remote Desktop Users" "fsociety\domain users" /add}
             }
             TestScript = { 
                 $false 
             }
             GetScript = { 
-                @{ Result = (Get-ADComputer "User-Server" ) } 
+                @{ Result = (Get-ADComputer "Fsociety-Server" ) } 
             }
             PsDscRunAsCredential = $firstDomainCred
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
-        Script "User-Server constrained Delegation Set"
+        Script "Fsociety-Server constrained Delegation Set"
         {
             SetScript = {
-                $comp = (Get-ADComputer -Identity "User-Server").DistinguishedName
-                Set-ADObject -Identity $comp -Add @{"msDS-AllowedToDelegateTo" = @("HOST/First-DC","HOST/First-DC.First.local","HOST/First-DC.first.local/first.local")}
+                $comp = (Get-ADComputer -Identity "Fsociety-Server").DistinguishedName
+                Set-ADObject -Identity $comp -Add @{"msDS-AllowedToDelegateTo" = @("HOST/Fsociety-DC","HOST/Fsociety-DC.fsociety.local","HOST/Fsociety-DC.fsociety.local/fsociety.local")}
             }
             TestScript = { 
                 $false 
             }
             GetScript = { 
-                @{ Result = (Get-ADComputer "User-Server" ) } 
+                @{ Result = (Get-ADComputer "Fsociety-Server" ) } 
             }
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
@@ -532,12 +532,12 @@ configuration Lab {
         }
     }
 
-    Node "UserServer" {
+    Node "FsocietyServer" {
         
         WaitForAll DC
         {
             ResourceName      = '[ADUser]asrep'
-            NodeName          = 'First-DC'
+            NodeName          = 'Fsociety-DC'
             RetryIntervalSec  = 60
             RetryCount        = 15
         }
@@ -557,16 +557,16 @@ configuration Lab {
             Name   = "Domain"
         }
         
-        User localuser {
+        User ServerUser {
             Ensure = "Present"
-            UserName = "local-user"
+            UserName = "server-user"
             Password = $DomainCred
         }
 
         Group Administrators {
             GroupName = "Administrators"
-            MembersToInclude = "local-user"
-            DependsOn = "[User]localuser"
+            MembersToInclude = "server-user"
+            DependsOn = "[User]ServerUser"
         }
 
         DnsServerAddress DnsServerAddress
@@ -620,29 +620,19 @@ configuration Lab {
         }
 
         Computer JoinDomain {
-            Name = "User-Server"
+            Name = "Fsociety-Server"
             DomainName = $firstDomainName
             Credential = $firstDomainCred
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
     }
 
-    Node "Second" {
-
-        WindowsFeature ADDSInstall {
-            Ensure = "Present"
-            Name = "AD-Domain-Services"
-        }
-
-        WindowsFeature ADDSTools {
-            Ensure = "Present"
-            Name = "RSAT-ADDS"
-        }
-
+    Node "FsocietyWorkstation" {
+        
         WaitForAll DC
         {
             ResourceName      = '[ADUser]asrep'
-            NodeName          = 'First-DC'
+            NodeName          = 'Fsociety-DC'
             RetryIntervalSec  = 60
             RetryCount        = 15
         }
@@ -662,6 +652,107 @@ configuration Lab {
             Name   = "Domain"
         }
         
+        User WorkstationUser {
+            Ensure = "Present"
+            UserName = "workstation-user"
+            Password = $DomainCred
+        }
+
+        Group Administrators {
+            GroupName = "Administrators"
+            MembersToInclude = "workstation-user"
+            DependsOn = "[User]WorkstationUser"
+        }
+
+        DnsServerAddress DnsServerAddress
+        {
+            Address        = '10.0.1.100'
+            InterfaceAlias = 'Ethernet'
+            AddressFamily  = 'IPv4'
+            Validate       = $false
+            DependsOn      = "[Group]Administrators"
+        }
+
+        Script DisableDefender
+        {
+            GetScript = { 
+                return @{ Result = (Get-Content C:\Windows\Temp\DefenderDisable.txt) } 
+            }
+
+            TestScript = {
+                Test-Path "C:\Windows\Temp\DefenderDisable.txt"
+            }
+
+            SetScript = {
+                Uninstall-WindowsFeature -Name Windows-Defender
+                $sw = New-Object System.IO.StreamWriter("C:\Windows\Temp\DefenderDisable.txt")
+                $sw.WriteLine("Defender has been uninstalled")
+                $sw.Close()
+            }
+        }
+
+        Script DisableSMBSign 
+        {
+            GetScript = { 
+                return @{ } 
+            }
+
+            TestScript = {
+                $false
+            }
+
+            SetScript = {
+                Set-SmbClientConfiguration -RequireSecuritySignature 0 -EnableSecuritySignature 0 -Confirm -Force
+            }
+        }
+
+        WaitForADDomain waitFirstDomain {
+            DomainName = $firstDomainName
+            Credential = $firstDomainCred
+            WaitForValidCredentials = $true
+            WaitTimeout = 300
+            DependsOn = "[DnsServerAddress]DnsServerAddress"
+        }
+
+        Computer JoinDomain {
+            Name = "Fsociety-Workstation"
+            DomainName = $firstDomainName
+            Credential = $firstDomainCred
+            DependsOn = "[WaitForADDomain]waitFirstDomain"
+        }
+    }
+
+    Node "EcorpDC" {
+
+        Computer NewName {
+            Name = "Ecorp-DC"
+        }
+        
+        WindowsFeature ADDSInstall {
+            Ensure = "Present"
+            Name = "AD-Domain-Services"
+        }
+
+        WindowsFeature ADDSTools {
+            Ensure = "Present"
+            Name = "RSAT-ADDS"
+        }
+
+        FirewallProfile DisablePublic {
+            Enabled = "False"
+            Name   = "Public"
+        }
+        
+        FirewallProfile DisablePrivate {
+            Enabled = "False"
+            Name   = "Private"
+        }
+        
+        FirewallProfile DisableDomain {
+            Enabled = "False"
+            Name   = "Domain"
+        }
+
         User AdminUser {
             Ensure = "Present"
             UserName = $domainCred.UserName
@@ -673,10 +764,180 @@ configuration Lab {
             MembersToInclude = $domainCred.UserName
             DependsOn = "[User]AdminUser"
         }
+        
+        ADDomain CreateDC {
+            DomainName = $secondDomainName
+            Credential = $domainCred
+            SafemodeAdministratorPassword = $safemodeAdministratorCred
+            DatabasePath = 'C:\NTDS'
+            LogPath = 'C:\NTDS'
+            DependsOn = "[WindowsFeature]ADDSInstall"
+        }
+
+        WaitForADDomain waitSecondDomain {
+            DomainName = $secondDomainName
+            DependsOn = "[ADDomain]CreateDC"
+        }
 
         DnsServerAddress DnsServerAddress
         {
-            Address        = '10.0.1.100'
+            Address        = '127.0.0.1', '10.0.1.100'
+            InterfaceAlias = 'Ethernet'
+            AddressFamily  = 'IPv4'
+            Validate       = $false
+            DependsOn = "[WaitForADDomain]waitSecondDomain"
+        }
+
+        Script SetConditionalForwardedZone {
+            GetScript = { return @{ } }
+
+            TestScript = {
+                $zone = Get-DnsServerZone -Name $using:firstDomainName -ErrorAction SilentlyContinue
+                if ($zone -ne $null -and $zone.ZoneType -eq 'Forwarder') {
+                    return $true
+                }
+
+                return $false
+            }
+
+            SetScript = {
+                $ForwardDomainName = $using:firstDomainName
+                $IpAddresses = @("10.0.1.100")
+                Add-DnsServerConditionalForwarderZone -Name "$ForwardDomainName" -ReplicationScope "Domain" -MasterServers $IpAddresses
+            }
+        }
+
+        ADGroup DomainAdmin {
+            Ensure = "Present"
+            GroupName = "Domain Admins"
+            MembersToInclude = $domainCred.UserName
+            DependsOn = "[WaitForADDomain]waitSecondDomain"
+        }
+
+        ADUser 'phillip.price'
+        {
+            Ensure     = 'Present'
+            UserName   = 'phillip.price'
+            Password   = (New-Object System.Management.Automation.PSCredential("phillip.price", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
+            DomainName = 'ecorp.local'
+            Path       = 'CN=Users,DC=ecorp,DC=local'
+            DependsOn = "[WaitForADDomain]waitSecondDomain"
+        }
+
+        ADUser 'tyrell.wellick'
+        {
+            Ensure     = 'Present'
+            UserName   = 'tyrell.wellick'
+            Password   = (New-Object System.Management.Automation.PSCredential("tyrell.wellick", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
+            DomainName = 'ecorp.local'
+            Path       = 'CN=Users,DC=ecorp,DC=local'
+            ServicePrincipalNames = "MSSQL/sql.ecorp.local"
+            DependsOn = "[WaitForADDomain]waitSecondDomain"
+        }
+
+        ADUser 'angela.moss'
+        {
+            Ensure     = 'Present'
+            UserName   = 'angela.moss'
+            Password   = (New-Object System.Management.Automation.PSCredential("angela.moss", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
+            DomainName = 'ecorp.local'
+            Path       = 'CN=Users,DC=ecorp,DC=local'
+            DependsOn = "[WaitForADDomain]waitSecondDomain"
+        }
+
+        WaitForADDomain waitFirstDomain {
+            DomainName = $firstDomainName
+            Credential = $firstDomainCred
+            WaitTimeout = 600
+            RestartCount = 2
+            DependsOn = "[Script]SetConditionalForwardedZone"
+        }
+
+        ADDomainTrust DomainTrust {
+            TargetDomainName = $firstDomainName
+            TargetCredential = $firstDomainCred
+            TrustType = "External"
+            TrustDirection = "Bidirectional"
+            SourceDomainName = $secondDomainName
+            DependsOn = "[WaitForADDomain]waitFirstDomain"
+            Ensure = "Present"
+        }
+
+        Script DisableSMBSign 
+        {
+            GetScript = { 
+                return @{ } 
+            }
+
+            TestScript = {
+                $false
+            }
+
+            SetScript = {
+                Set-SmbClientConfiguration -RequireSecuritySignature 0 -EnableSecuritySignature 0 -Confirm -Force
+            }
+        }
+
+        Script DisableDefender
+        {
+            GetScript = { 
+                return @{ Result = (Get-Content C:\Windows\Temp\DefenderDisable.txt) } 
+            }
+
+            TestScript = {
+                Test-Path "C:\Windows\Temp\DefenderDisable.txt"
+            }
+
+            SetScript = {
+                Uninstall-WindowsFeature -Name Windows-Defender
+                $sw = New-Object System.IO.StreamWriter("C:\Windows\Temp\DefenderDisable.txt")
+                $sw.WriteLine("Defender has been uninstalled")
+                $sw.Close()
+                $global:DSCMachineStatus = 1
+            }
+        }
+    }
+
+    Node "EcorpServer" {
+        
+        WaitForAll DC
+        {
+            ResourceName      = '[ADUser]asrep'
+            NodeName          = 'Ecorp-DC'
+            RetryIntervalSec  = 60
+            RetryCount        = 15
+        }
+        
+        FirewallProfile DisablePublic {
+            Enabled = "False"
+            Name   = "Public"
+        }
+        
+        FirewallProfile DisablePrivate {
+            Enabled = "False"
+            Name   = "Private"
+        }
+        
+        FirewallProfile DisableDomain {
+            Enabled = "False"
+            Name   = "Domain"
+        }
+        
+        User ServerUser {
+            Ensure = "Present"
+            UserName = "server-user"
+            Password = $DomainCred
+        }
+
+        Group Administrators {
+            GroupName = "Administrators"
+            MembersToInclude = "server-user"
+            DependsOn = "[User]ServerUser"
+        }
+
+        DnsServerAddress DnsServerAddress
+        {
+            Address        = '10.0.2.100'
             InterfaceAlias = 'Ethernet'
             AddressFamily  = 'IPv4'
             Validate       = $false
@@ -716,68 +977,173 @@ configuration Lab {
             }
         }
 
-        WaitForADDomain waitFirstDomain {
-            DomainName = $firstDomainName
-            Credential = $firstDomainCred
+        WaitForADDomain waitSecondDomain {
+            DomainName = $secondDomainName
+            Credential = $secondDomainCred
             WaitForValidCredentials = $true
             WaitTimeout = 300
             DependsOn = "[DnsServerAddress]DnsServerAddress"
         }
 
         Computer JoinDomain {
-            Name = "Second-DC"
-            DomainName = $firstDomainName
-            Credential = $firstDomainCred
-            DependsOn = "[WaitForADDomain]waitFirstDomain"
+            Name = "Ecorp-Server"
+            DomainName = $secondDomainName
+            Credential = $secondDomainCred
+            DependsOn = "[WaitForADDomain]waitSecondDomain"
         }
+    }
 
-        ADDomainController SecondDomainController
+    Node "EcorpWorkstation" {
+        
+        WaitForAll DC
         {
-            DomainName                    = $firstDomainName
-            Credential                    = $firstDomainCred
-            SafeModeAdministratorPassword = $safemodeAdministratorCred
-            DatabasePath                  = 'C:\NTDS'
-            LogPath                       = 'C:\NTDS'
-            SysvolPath                    = 'C:\Windows\SYSVOL'
-            SiteName                      = 'Default-First-Site-Name'
-            IsGlobalCatalog               = $true
-            DependsOn                     = '[WaitForADDomain]waitFirstDomain'
+            ResourceName      = '[ADUser]asrep'
+            NodeName          = 'Ecorp-DC'
+            RetryIntervalSec  = 60
+            RetryCount        = 15
+        }
+        
+        FirewallProfile DisablePublic {
+            Enabled = "False"
+            Name   = "Public"
+        }
+        
+        FirewallProfile DisablePrivate {
+            Enabled = "False"
+            Name   = "Private"
+        }
+        
+        FirewallProfile DisableDomain {
+            Enabled = "False"
+            Name   = "Domain"
+        }
+        
+        User WorkstationUser {
+            Ensure = "Present"
+            UserName = "workstation-user"
+            Password = $DomainCred
         }
 
+        Group Administrators {
+            GroupName = "Administrators"
+            MembersToInclude = "workstation-user"
+            DependsOn = "[User]WorkstationUser"
+        }
+
+        DnsServerAddress DnsServerAddress
+        {
+            Address        = '10.0.2.100'
+            InterfaceAlias = 'Ethernet'
+            AddressFamily  = 'IPv4'
+            Validate       = $false
+            DependsOn      = "[Group]Administrators"
+        }
+
+        Script DisableDefender
+        {
+            GetScript = { 
+                return @{ Result = (Get-Content C:\Windows\Temp\DefenderDisable.txt) } 
+            }
+
+            TestScript = {
+                Test-Path "C:\Windows\Temp\DefenderDisable.txt"
+            }
+
+            SetScript = {
+                Uninstall-WindowsFeature -Name Windows-Defender
+                $sw = New-Object System.IO.StreamWriter("C:\Windows\Temp\DefenderDisable.txt")
+                $sw.WriteLine("Defender has been uninstalled")
+                $sw.Close()
+            }
+        }
+
+        Script DisableSMBSign 
+        {
+            GetScript = { 
+                return @{ } 
+            }
+
+            TestScript = {
+                $false
+            }
+
+            SetScript = {
+                Set-SmbClientConfiguration -RequireSecuritySignature 0 -EnableSecuritySignature 0 -Confirm -Force
+            }
+        }
+
+        WaitForADDomain waitSecondDomain {
+            DomainName = $secondDomainName
+            Credential = $secondDomainCred
+            WaitForValidCredentials = $true
+            WaitTimeout = 300
+            DependsOn = "[DnsServerAddress]DnsServerAddress"
+        }
+
+        Computer JoinDomain {
+            Name = "Ecorp-Workstation"
+            DomainName = $secondDomainName
+            Credential = $secondDomainCred
+            DependsOn = "[WaitForADDomain]waitSecondDomain"
+        }
     }
 }
 
 $ConfigData = @{
     AllNodes = @(
         @{
-            Nodename                    = "First"
-            Role                        = "First DC"
+            Nodename                    = "FsocietyDC"
+            Role                        = "Fsociety DC"
             RetryCount                  = 0
             RetryIntervalSec            = 0
             PsDscAllowPlainTextPassword = $true
         },
         @{
-            Nodename                    = "UserServer"
-            Role                        = "User Server"
+            Nodename                    = "FsocietyServer"
+            Role                        = "Fsociety Server"
             RetryCount                  = 0
             RetryIntervalSec            = 0
             PsDscAllowPlainTextPassword = $true
             PsDscAllowDomainUser        = $true
         },
         @{
-            Nodename                    = "Second"
-            Role                        = "Second DC"
+            Nodename                    = "FsocietyWorkstation"
+            Role                        = "Fsociety Workstation"
             RetryCount                  = 0
             RetryIntervalSec            = 0
             PsDscAllowPlainTextPassword = $true
+            PsDscAllowDomainUser        = $true
+        },
+        @{
+            Nodename                    = "EcorpDC"
+            Role                        = "Ecorp DC"
+            RetryCount                  = 0
+            RetryIntervalSec            = 0
+            PsDscAllowPlainTextPassword = $true
+        },
+        @{
+            Nodename                    = "EcorpServer"
+            Role                        = "Ecorp Server"
+            RetryCount                  = 0
+            RetryIntervalSec            = 0
+            PsDscAllowPlainTextPassword = $true
+            PsDscAllowDomainUser        = $true
+        },
+        @{
+            Nodename                    = "EcorpWorkstation"
+            Role                        = "Ecorp Workstation"
+            RetryCount                  = 0
+            RetryIntervalSec            = 0
+            PsDscAllowPlainTextPassword = $true
+            PsDscAllowDomainUser        = $true
         }
     )
 }
 
 Lab -ConfigurationData $ConfigData `
-    -firstDomainName "first.local" `
-    -secondDomainName "second.local" `
+    -firstDomainName "fsociety.local" `
+    -secondDomainName "ecorp.local" `
     -domainCred (New-Object System.Management.Automation.PSCredential("admin", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force))) `
     -safemodeAdministratorCred (New-Object System.Management.Automation.PSCredential("admin", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force))) `
-    -firstDomainCred (New-Object System.Management.Automation.PSCredential("first-admin", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force))) 
-
+    -firstDomainCred (New-Object System.Management.Automation.PSCredential("fsociety-admin", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force))) `
+    -secondDomainCred (New-Object System.Management.Automation.PSCredential("ecorp-admin", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force))) 
