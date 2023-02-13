@@ -21,28 +21,40 @@ variable "VPC_CIDR" {
     default = "10.0.0.0/16"
 }
 
-variable "FIRST_SUBNET_CIDR" {
+variable "FSOCIETY_SUBNET_CIDR" {
     default = "10.0.1.0/24"
 }
 
-variable "SECOND_SUBNET_CIDR" {
+variable "ECORP_SUBNET_CIDR" {
     default = "10.0.2.0/24"
 }
 
-variable "FIRST_DC_IP" {
+variable "FSOCIETY_DC_IP" {
     default = "10.0.1.100"
 }
 
-variable "SECOND_DC_IP" {
-    default = "10.0.1.200"
-}
-
-variable "USER_SERVER_IP" {
+variable "FSOCIETY_SERVER_IP" {
     default = "10.0.1.50"
 }
 
-variable "ATTACK_SERVER_IP" {
+variable "FSOCIETY_WORKSTATION_IP" {
+    default = "10.0.1.150"
+}
+
+variable "ATTACKER_IP" {
     default = "10.0.1.10"
+}
+
+variable "ECORP_DC_IP" {
+    default = "10.0.2.100"
+}
+
+variable "ECORP_SERVER_IP" {
+    default = "10.0.2.50"
+}
+
+variable "ECORP_WORKSTATION_IP" {
+    default = "10.0.2.150"
 }
 
 variable "PUBLIC_DNS" {
