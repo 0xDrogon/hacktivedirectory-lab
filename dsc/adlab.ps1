@@ -627,101 +627,6 @@ configuration Lab {
         }
     }
 
-    Node "FsocietyWorkstation" {
-        
-        WaitForAll DC
-        {
-            ResourceName      = '[ADUser]asrep'
-            NodeName          = 'Fsociety-DC'
-            RetryIntervalSec  = 60
-            RetryCount        = 15
-        }
-        
-        FirewallProfile DisablePublic {
-            Enabled = "False"
-            Name   = "Public"
-        }
-        
-        FirewallProfile DisablePrivate {
-            Enabled = "False"
-            Name   = "Private"
-        }
-        
-        FirewallProfile DisableDomain {
-            Enabled = "False"
-            Name   = "Domain"
-        }
-        
-        User WorkstationUser {
-            Ensure = "Present"
-            UserName = "workstation-user"
-            Password = $DomainCred
-        }
-
-        Group Administrators {
-            GroupName = "Administrators"
-            MembersToInclude = "workstation-user"
-            DependsOn = "[User]WorkstationUser"
-        }
-
-        DnsServerAddress DnsServerAddress
-        {
-            Address        = '10.0.1.100'
-            InterfaceAlias = 'Ethernet'
-            AddressFamily  = 'IPv4'
-            Validate       = $false
-            DependsOn      = "[Group]Administrators"
-        }
-
-        Script DisableDefender
-        {
-            GetScript = { 
-                return @{ Result = (Get-Content C:\Windows\Temp\DefenderDisable.txt) } 
-            }
-
-            TestScript = {
-                Test-Path "C:\Windows\Temp\DefenderDisable.txt"
-            }
-
-            SetScript = {
-                Uninstall-WindowsFeature -Name Windows-Defender
-                $sw = New-Object System.IO.StreamWriter("C:\Windows\Temp\DefenderDisable.txt")
-                $sw.WriteLine("Defender has been uninstalled")
-                $sw.Close()
-            }
-        }
-
-        Script DisableSMBSign 
-        {
-            GetScript = { 
-                return @{ } 
-            }
-
-            TestScript = {
-                $false
-            }
-
-            SetScript = {
-                Set-SmbClientConfiguration -RequireSecuritySignature 0 -EnableSecuritySignature 0 -Confirm -Force
-            }
-        }
-
-        WaitForADDomain waitFirstDomain {
-            DomainName = $firstDomainName
-            Credential = $firstDomainCred
-            WaitForValidCredentials = $true
-            WaitTimeout = 300
-            DependsOn = "[DnsServerAddress]DnsServerAddress"
-        }
-
-        Computer JoinDomain {
-            Name = "Fsociety-Workstation"
-            DomainName = $firstDomainName
-            Credential = $firstDomainCred
-            DependsOn = "[WaitForADDomain]waitFirstDomain"
-        }
-    }
-
     Node "EcorpDC" {
 
         Computer NewName {
@@ -863,6 +768,37 @@ configuration Lab {
             Ensure = "Present"
         }
 
+        Script "Ecorp-Server-RDP"
+        {
+            SetScript = {
+                Start-Sleep -Seconds 300
+                Invoke-Command -ComputerName "Ecorp-Server" -Scriptblock {net localgroup "Remote Desktop Users" "ecorp\domain users" /add}
+            }
+            TestScript = { 
+                $false 
+            }
+            GetScript = { 
+                @{ Result = (Get-ADComputer "Ecorp-Server" ) } 
+            }
+            PsDscRunAsCredential = $secondDomainCred
+            DependsOn = "[WaitForADDomain]waitFirstDomain"
+        }
+
+        Script "Ecorp-Server constrained Delegation Set"
+        {
+            SetScript = {
+                $comp = (Get-ADComputer -Identity "Ecorp-Server").DistinguishedName
+                Set-ADObject -Identity $comp -Add @{"msDS-AllowedToDelegateTo" = @("HOST/Ecorp-DC","HOST/Ecorp-DC.ecorp.local","HOST/Ecorp-DC.ecorp.local/ecorp.local")}
+            }
+            TestScript = { 
+                $false 
+            }
+            GetScript = { 
+                @{ Result = (Get-ADComputer "Ecorp-Server" ) } 
+            }
+            DependsOn = "[WaitForADDomain]waitFirstDomain"
+        }
+
         Script DisableSMBSign 
         {
             GetScript = { 
@@ -902,7 +838,7 @@ configuration Lab {
         
         WaitForAll DC
         {
-            ResourceName      = '[ADUser]asrep'
+            ResourceName      = '[ADUser]angela.moss'
             NodeName          = 'Ecorp-DC'
             RetryIntervalSec  = 60
             RetryCount        = 15
@@ -993,100 +929,6 @@ configuration Lab {
         }
     }
 
-    Node "EcorpWorkstation" {
-        
-        WaitForAll DC
-        {
-            ResourceName      = '[ADUser]asrep'
-            NodeName          = 'Ecorp-DC'
-            RetryIntervalSec  = 60
-            RetryCount        = 15
-        }
-        
-        FirewallProfile DisablePublic {
-            Enabled = "False"
-            Name   = "Public"
-        }
-        
-        FirewallProfile DisablePrivate {
-            Enabled = "False"
-            Name   = "Private"
-        }
-        
-        FirewallProfile DisableDomain {
-            Enabled = "False"
-            Name   = "Domain"
-        }
-        
-        User WorkstationUser {
-            Ensure = "Present"
-            UserName = "workstation-user"
-            Password = $DomainCred
-        }
-
-        Group Administrators {
-            GroupName = "Administrators"
-            MembersToInclude = "workstation-user"
-            DependsOn = "[User]WorkstationUser"
-        }
-
-        DnsServerAddress DnsServerAddress
-        {
-            Address        = '10.0.2.100'
-            InterfaceAlias = 'Ethernet'
-            AddressFamily  = 'IPv4'
-            Validate       = $false
-            DependsOn      = "[Group]Administrators"
-        }
-
-        Script DisableDefender
-        {
-            GetScript = { 
-                return @{ Result = (Get-Content C:\Windows\Temp\DefenderDisable.txt) } 
-            }
-
-            TestScript = {
-                Test-Path "C:\Windows\Temp\DefenderDisable.txt"
-            }
-
-            SetScript = {
-                Uninstall-WindowsFeature -Name Windows-Defender
-                $sw = New-Object System.IO.StreamWriter("C:\Windows\Temp\DefenderDisable.txt")
-                $sw.WriteLine("Defender has been uninstalled")
-                $sw.Close()
-            }
-        }
-
-        Script DisableSMBSign 
-        {
-            GetScript = { 
-                return @{ } 
-            }
-
-            TestScript = {
-                $false
-            }
-
-            SetScript = {
-                Set-SmbClientConfiguration -RequireSecuritySignature 0 -EnableSecuritySignature 0 -Confirm -Force
-            }
-        }
-
-        WaitForADDomain waitSecondDomain {
-            DomainName = $secondDomainName
-            Credential = $secondDomainCred
-            WaitForValidCredentials = $true
-            WaitTimeout = 300
-            DependsOn = "[DnsServerAddress]DnsServerAddress"
-        }
-
-        Computer JoinDomain {
-            Name = "Ecorp-Workstation"
-            DomainName = $secondDomainName
-            Credential = $secondDomainCred
-            DependsOn = "[WaitForADDomain]waitSecondDomain"
-        }
-    }
 }
 
 $ConfigData = @{
@@ -1107,14 +949,6 @@ $ConfigData = @{
             PsDscAllowDomainUser        = $true
         },
         @{
-            Nodename                    = "FsocietyWorkstation"
-            Role                        = "Fsociety Workstation"
-            RetryCount                  = 0
-            RetryIntervalSec            = 0
-            PsDscAllowPlainTextPassword = $true
-            PsDscAllowDomainUser        = $true
-        },
-        @{
             Nodename                    = "EcorpDC"
             Role                        = "Ecorp DC"
             RetryCount                  = 0
@@ -1124,14 +958,6 @@ $ConfigData = @{
         @{
             Nodename                    = "EcorpServer"
             Role                        = "Ecorp Server"
-            RetryCount                  = 0
-            RetryIntervalSec            = 0
-            PsDscAllowPlainTextPassword = $true
-            PsDscAllowDomainUser        = $true
-        },
-        @{
-            Nodename                    = "EcorpWorkstation"
-            Role                        = "Ecorp Workstation"
             RetryCount                  = 0
             RetryIntervalSec            = 0
             PsDscAllowPlainTextPassword = $true
