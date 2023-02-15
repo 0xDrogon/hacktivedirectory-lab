@@ -105,24 +105,6 @@ resource "aws_instance" "fsociety-server" {
     ]
 }
 
-# The User server which will be main foothold
-resource "aws_instance" "fsociety-workstation" {
-    ami                         = data.aws_ami.latest-windows-server.image_id
-    instance_type               = "t2.small"
-    key_name                    = aws_key_pair.terraformkey.key_name
-    associate_public_ip_address = true
-    subnet_id                   = aws_subnet.first-vpc-subnet.id
-    private_ip                  = var.FSOCIETY_WORKSTATION_IP
-    iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
-    tags = {
-        Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-Fsociety-Workstation"
-    }
-    vpc_security_group_ids = [
-        aws_security_group.first-sg.id,
-    ]
-}
-
 # Our second domain controller of the "ecorp.local" domain
 resource "aws_instance" "ecorp-dc" {
     ami                         = data.aws_ami.latest-windows-server.image_id
@@ -153,24 +135,6 @@ resource "aws_instance" "ecorp-server" {
     tags = {
         Workspace = "${terraform.workspace}"
         Name      = "${terraform.workspace}-Ecorp-Server"
-    }
-    vpc_security_group_ids = [
-        aws_security_group.second-sg.id,
-    ]
-}
-
-# The User server which will be main foothold
-resource "aws_instance" "ecorp-workstation" {
-    ami                         = data.aws_ami.latest-windows-server.image_id
-    instance_type               = "t2.small"
-    key_name                    = aws_key_pair.terraformkey.key_name
-    associate_public_ip_address = true
-    subnet_id                   = aws_subnet.second-vpc-subnet.id
-    private_ip                  = var.ECORP_WORKSTATION_IP
-    iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
-    tags = {
-        Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-Ecorp-Workstation"
     }
     vpc_security_group_ids = [
         aws_security_group.second-sg.id,
@@ -342,14 +306,6 @@ resource "aws_s3_bucket_object" "fsociety-server-mof" {
     etag       = filemd5("../dsc/Lab/FsocietyServer.mof")
 }
 
-# Add userserver MOF's to S3
-resource "aws_s3_bucket_object" "fsociety-workstation-mof" {
-    bucket     = var.SSM_S3_BUCKET
-    key        = "Lab/FsocietyWorkstation.mof"
-    source     = "../dsc/Lab/FsocietyWorkstation.mof"
-    etag       = filemd5("../dsc/Lab/FsocietyWorkstation.mof")
-}
-
 # Add ecorp.local MOF's to S3
 resource "aws_s3_bucket_object" "ecorp-dc-mof" {
     bucket     = var.SSM_S3_BUCKET
@@ -364,14 +320,6 @@ resource "aws_s3_bucket_object" "ecorp-server-mof" {
     key        = "Lab/EcorpServer.mof"
     source     = "../dsc/Lab/EcorpServer.mof"
     etag       = filemd5("../dsc/Lab/EcorpServer.mof")
-}
-
-# Add userserver MOF's to S3
-resource "aws_s3_bucket_object" "ecorp-workstation-mof" {
-    bucket     = var.SSM_S3_BUCKET
-    key        = "Lab/EcorpWorkstation.mof"
-    source     = "../dsc/Lab/EcorpWorkstation.mof"
-    etag       = filemd5("../dsc/Lab/EcorpWorkstation.mof")
 }
 
 # SSM parameters used by DSC
@@ -529,11 +477,6 @@ output "fsociety-server_ip" {
     description = "Public IP of Fsociety-Server"
 }
 
-output "fsociety-workstation_ip" {
-    value       = "${aws_instance.fsociety-workstation.public_ip}"
-    description = "Public IP of Fsociety-Workstation"
-}
-
 output "ecorp-dc_ip" {
     value       = "${aws_instance.ecorp-dc.public_ip}"
     description = "Public IP of Ecorp-DC"
@@ -542,11 +485,6 @@ output "ecorp-dc_ip" {
 output "ecorp-server_ip" {
     value       = "${aws_instance.ecorp-server.public_ip}"
     description = "Public IP of Ecorp-Server"
-}
-
-output "ecorp-workstation_ip" {
-    value       = "${aws_instance.ecorp-workstation.public_ip}"
-    description = "Public IP of Ecorp-Workstation"
 }
 
 output "attacker_ip" {
@@ -575,27 +513,13 @@ resource "aws_ssm_association" "fsociety-dc" {
 # Apply our DSC via SSM to fsociety-server
 resource "aws_ssm_association" "fsociety-server" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "${terraform.workspace}-fsociety-server"
+    association_name = "${terraform.workspace}-Fsociety-server"
     targets {
         key    = "InstanceIds"
         values = [aws_instance.fsociety-server.id]
     }
     parameters = {
         MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/FsocietyServer.mof"
-        RebootBehavior = "Immediately"
-    }
-}
-
-# Apply our DSC via SSM to fsociety-workstation
-resource "aws_ssm_association" "fsociety-workstation" {
-    name             = "AWS-ApplyDSCMofs"
-    association_name = "${terraform.workspace}-fsociety-workstation"
-    targets {
-        key    = "InstanceIds"
-        values = [aws_instance.fsociety-workstation.id]
-    }
-    parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/FsocietyWorkstation.mof"
         RebootBehavior = "Immediately"
     }
 }
@@ -617,27 +541,13 @@ resource "aws_ssm_association" "ecorp-dc" {
 # Apply our DSC via SSM to ecorp-server
 resource "aws_ssm_association" "ecorp-server" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "${terraform.workspace}-ecorp-server"
+    association_name = "${terraform.workspace}-Ecorp-server"
     targets {
         key    = "InstanceIds"
         values = [aws_instance.ecorp-server.id]
     }
     parameters = {
         MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/EcorpServer.mof"
-        RebootBehavior = "Immediately"
-    }
-}
-
-# Apply our DSC via SSM to ecorp-workstation
-resource "aws_ssm_association" "ecorp-workstation" {
-    name             = "AWS-ApplyDSCMofs"
-    association_name = "${terraform.workspace}-ecorp-workstation"
-    targets {
-        key    = "InstanceIds"
-        values = [aws_instance.ecorp-workstation.id]
-    }
-    parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/EcorpWorkstation.mof"
         RebootBehavior = "Immediately"
     }
 }
