@@ -168,13 +168,24 @@ resource "null_resource" "attacker-setup" {
         private_key = file(var.PRIVATE_KEY_PATH)
         agent       = false
     }
+    provisioner "file" {
+        source      = "../wordlists"
+        destination = "wordlists"
+    }
     provisioner "remote-exec" {
         inline = [
+        # Initial setup
         "sudo apt update",
         "sudo apt install -y apt-transport-https",
         "sudo apt install -y git",
         "sudo apt install -y python3-pip",
         "sudo apt update",
+
+        # Installs dig & nslookup
+        "sudo apt install -y dnsutils",
+
+        # Installs Tshark
+        # "sudo apt install -y tshark",
 
         # Installs Proxychains
         "sudo apt install -y proxychains4",
@@ -182,15 +193,31 @@ resource "null_resource" "attacker-setup" {
         # Installs Nmap
         "sudo apt install -y nmap",
 
+        # Installs HashCat
+        "sudo apt install -y hashcat",
+
+        # Installs John the Ripper
+        "sudo apt install -y john",
+
+        # Installs NBTscan
+        "sudo apt install -y nbtscan",
+
+        # Installs Kerbrute
+        "wget https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64 -O kerbrute",
+        "chmod +x kerbrute",
+
         # Installs Responder
         "git clone https://github.com/lgandx/Responder.git",
+        "cd Responder",
+        "sudo pip install netifaces",
+        "cd ..",
         
         # Installs Impacket
         "git clone https://github.com/fortra/impacket.git",
         "cd impacket",
         "sudo python3 -m pip install --upgrade pip",
         "sudo python3 -m pip install .",
-        "cd ../"
+        "cd .."
         ]
     }
 }
