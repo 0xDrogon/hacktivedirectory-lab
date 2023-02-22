@@ -80,7 +80,7 @@ resource "aws_instance" "fsociety-dc" {
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-Fsociety-DC"
+        Name      = "Fsociety-DC"
     }
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
@@ -98,7 +98,7 @@ resource "aws_instance" "fsociety-server" {
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-Fsociety-Server"
+        Name      = "Fsociety-Server"
     }
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
@@ -116,7 +116,7 @@ resource "aws_instance" "ecorp-dc" {
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-Ecorp-DC"
+        Name      = "Ecorp-DC"
     }
     vpc_security_group_ids = [
         aws_security_group.second-sg.id,
@@ -134,7 +134,7 @@ resource "aws_instance" "ecorp-server" {
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-Ecorp-Server"
+        Name      = "Ecorp-Server"
     }
     vpc_security_group_ids = [
         aws_security_group.second-sg.id,
@@ -152,7 +152,7 @@ resource "aws_instance" "attacker" {
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "${terraform.workspace}-Attacker"
+        Name      = "Attacker"
     }
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
@@ -175,6 +175,7 @@ resource "null_resource" "attacker-setup" {
     provisioner "remote-exec" {
         inline = [
         # Initial setup
+        # "sudo hostnamectl set-hostname attacker",
         "sudo apt update",
         "sudo apt install -y apt-transport-https",
         "sudo apt install -y git",
@@ -416,52 +417,10 @@ resource "aws_ssm_parameter" "userall-user-ssm-parameter" {
     value = "{\"Username\":\"userall.user\", \"Password\":\"Password@1\"}"
 }
 
-resource "aws_ssm_parameter" "compwrite-user-ssm-parameter" {
-    name  = "compwrite.user"
-    type  = "SecureString"
-    value = "{\"Username\":\"compwrite.user\", \"Password\":\"Password@1\"}"
-}
-
-resource "aws_ssm_parameter" "gpowrite-user-ssm-parameter" {
-    name  = "gpowrite.user"
-    type  = "SecureString"
-    value = "{\"Username\":\"gpowrite.user\", \"Password\":\"Password@1\"}"
-}
-
-resource "aws_ssm_parameter" "lapsread-user-ssm-parameter" {
-    name  = "lapsread.user"
-    type  = "SecureString"
-    value = "{\"Username\":\"lapsread.user\", \"Password\":\"Password@1\"}"
-}
-
-resource "aws_ssm_parameter" "groupwrite-user-ssm-parameter" {
-    name  = "groupwrite.user"
-    type  = "SecureString"
-    value = "{\"Username\":\"groupwrite.user\", \"Password\":\"Password@1\"}"
-}
-
-resource "aws_ssm_parameter" "writedacldc-user-ssm-parameter" {
-    name  = "writedacldc.user"
-    type  = "SecureString"
-    value = "{\"Username\":\"writedacldc.user\", \"Password\":\"Password@1\"}"
-}
-
-resource "aws_ssm_parameter" "readgmsa-user-ssm-parameter" {
-    name  = "readgmsa.user"
-    type  = "SecureString"
-    value = "{\"Username\":\"readgmsa.user\", \"Password\":\"Password@1\"}"
-}
-
 resource "aws_ssm_parameter" "clearpass-user-ssm-parameter" {
     name  = "clearpass.user"
     type  = "SecureString"
     value = "{\"Username\":\"clearpass.user\", \"Password\":\"Password@1\"}"
-}
-
-resource "aws_ssm_parameter" "dcsync-user-ssm-parameter" {
-    name  = "dcsync.user"
-    type  = "SecureString"
-    value = "{\"Username\":\"dcsync.user\", \"Password\":\"Password@1\"}"
 }
 
 resource "aws_ssm_parameter" "roast-user-ssm-parameter" {
@@ -526,7 +485,7 @@ output "timestamp" {
 # Apply our DSC via SSM to fsociety.local
 resource "aws_ssm_association" "fsociety-dc" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "${terraform.workspace}-Fsociety-DC"
+    association_name = "Fsociety-DC"
     targets {
         key    = "InstanceIds"
         values = [aws_instance.fsociety-dc.id]
@@ -540,7 +499,7 @@ resource "aws_ssm_association" "fsociety-dc" {
 # Apply our DSC via SSM to fsociety-server
 resource "aws_ssm_association" "fsociety-server" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "${terraform.workspace}-Fsociety-server"
+    association_name = "Fsociety-server"
     targets {
         key    = "InstanceIds"
         values = [aws_instance.fsociety-server.id]
@@ -554,7 +513,7 @@ resource "aws_ssm_association" "fsociety-server" {
 # Apply our DSC via SSM to ecorp.local
 resource "aws_ssm_association" "ecorp-dc" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "${terraform.workspace}-Ecorp-DC"
+    association_name = "Ecorp-DC"
     targets {
         key    = "InstanceIds"
         values = [aws_instance.ecorp-dc.id]
@@ -568,7 +527,7 @@ resource "aws_ssm_association" "ecorp-dc" {
 # Apply our DSC via SSM to ecorp-server
 resource "aws_ssm_association" "ecorp-server" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "${terraform.workspace}-Ecorp-server"
+    association_name = "Ecorp-server"
     targets {
         key    = "InstanceIds"
         values = [aws_instance.ecorp-server.id]
