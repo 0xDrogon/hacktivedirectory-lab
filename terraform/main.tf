@@ -175,7 +175,7 @@ resource "null_resource" "attacker-setup" {
     provisioner "remote-exec" {
         inline = [
         # Initial setup
-        # "sudo hostnamectl set-hostname attacker",
+        "sudo hostnamectl set-hostname attacker",
         "sudo apt update",
         "sudo apt install -y apt-transport-https",
         "sudo apt install -y git",
@@ -354,7 +354,7 @@ resource "aws_s3_bucket_object" "ecorp-server-mof" {
 resource "aws_ssm_parameter" "admin-ssm-parameter" {
     name  = "admin"
     type  = "SecureString"
-    value = "{\"Username\":\"admin\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"admin\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
 }
 
 resource "aws_ssm_parameter" "server-user-ssm-parameter" {
@@ -372,13 +372,13 @@ resource "aws_ssm_parameter" "workstation-user-ssm-parameter" {
 resource "aws_ssm_parameter" "fsociety-admin-ssm-parameter" {
     name  = "fsociety-admin"
     type  = "SecureString"
-    value = "{\"Username\":\"fsociety.local\\\\admin\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"fsociety.local\\\\admin\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
 }
 
 resource "aws_ssm_parameter" "ecorp-admin-ssm-parameter" {
     name  = "ecorp-admin"
     type  = "SecureString"
-    value = "{\"Username\":\"ecorp.local\\\\admin\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"ecorp.local\\\\admin\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
 }
 
 resource "aws_ssm_parameter" "mr-robot-ssm-parameter" {
