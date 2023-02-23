@@ -20,6 +20,7 @@ configuration Lab {
     Import-DscResource -ModuleName NetworkingDsc
     Import-DscResource -ModuleName ComputerManagementDsc
     Import-DscResource -ModuleName PSDesiredStateConfiguration
+    Import-DscResource -ModuleName WebAdministrationDsc
 
     Node "FsocietyDC" {
 
@@ -396,21 +397,26 @@ configuration Lab {
         
         FirewallProfile DisablePublic {
             Enabled = "False"
-            Name   = "Public"
+            Name    = "Public"
         }
         
         FirewallProfile DisablePrivate {
             Enabled = "False"
-            Name   = "Private"
+            Name    = "Private"
         }
         
         FirewallProfile DisableDomain {
             Enabled = "False"
-            Name   = "Domain"
+            Name    = "Domain"
+        }
+
+        WindowsFeature WebServer {
+            Ensure = "Present"
+            Name   = "Web-Server"
         }
         
         User ServerUser {
-            Ensure = "Present"
+            Ensure   = "Present"
             UserName = "server-user"
             Password = $DomainCred
         }
@@ -709,6 +715,18 @@ configuration Lab {
         FirewallProfile DisableDomain {
             Enabled = "False"
             Name   = "Domain"
+        }
+
+        WindowsFeature FTPServerFeature {
+            Ensure = "Present"
+            Name   = "Web-FTP-Server"
+        }
+
+        WebSite FTPSite {
+            Name = "FTP Site"
+            State = "Started"
+            PhysicalPath = "C:\inetpub\ftproot"
+            DependsOn = "[WindowsFeature]FTPServerFeature"
         }
         
         User ServerUser {
