@@ -87,6 +87,14 @@ resource "aws_instance" "fsociety-dc" {
     ]
 }
 
+resource "aws_s3_object" "fsociety-server-sql-file" {
+    bucket     = var.SSM_S3_BUCKET
+    key        = "sql_server_2022_dev_x64.iso"
+    source     = "../utils/sql_server_2022_dev_x64.iso"
+    etag       = filemd5("../utils/sql_server_2022_dev_x64.iso")
+    acl        = "public-read" 
+}
+
 # The User server which will be main foothold
 resource "aws_instance" "fsociety-server" {
     ami                         = data.aws_ami.latest-windows-server.image_id
@@ -103,6 +111,17 @@ resource "aws_instance" "fsociety-server" {
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
     ]
+    user_data = <<EOF
+    <powershell>
+        curl -o C:\sql_server_2022_dev_x64.iso https://activedirectory-lab.s3.eu-west-1.amazonaws.com/sql_server_2022_dev_x64.iso
+        New-Item -Path C:\SQL2022 -ItemType Directory
+        $mountResult = Mount-DiskImage -ImagePath 'C:\sql_server_2022_dev_x64.iso' -PassThru
+        $volumeInfo = $mountResult | Get-Volume
+        $driveInfo = Get-PSDrive -Name $volumeInfo.DriveLetter
+        Copy-Item -Path ( Join-Path -Path $driveInfo.Root -ChildPath '*' ) -Destination C:\SQL2022\ -Recurse
+        Dismount-DiskImage -ImagePath 'C:\sql_server_2022_dev_x64.iso'
+    </powershell>
+    EOF
 }
 
 # Our second domain controller of the "ecorp.local" domain
@@ -169,7 +188,7 @@ resource "null_resource" "attacker-setup" {
         agent       = false
     }
     provisioner "file" {
-        source      = "../wordlists"
+        source      = "../utils/wordlists"
         destination = "wordlists"
     }
     provisioner "remote-exec" {
@@ -189,7 +208,7 @@ resource "null_resource" "attacker-setup" {
         # "sudo apt install -y tshark",
 
         # Installs Proxychains
-        "sudo apt install -y proxychains4",
+        # "sudo apt install -y proxychains4",
 
         # Installs Nmap
         "sudo apt install -y nmap",
@@ -198,10 +217,10 @@ resource "null_resource" "attacker-setup" {
         "sudo apt install -y hashcat",
 
         # Installs John the Ripper
-        "sudo apt install -y john",
+        # "sudo apt install -y john",
 
         # Installs NBTscan
-        "sudo apt install -y nbtscan",
+        # "sudo apt install -y nbtscan",
 
         # Installs Kerbrute
         "wget https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64 -O kerbrute",
@@ -319,7 +338,7 @@ resource "aws_security_group" "second-sg" {
 }
 
 # Add fsociety.local MOF's to S3
-resource "aws_s3_bucket_object" "fsociety-dc-mof" {
+resource "aws_s3_object" "fsociety-dc-mof" {
     bucket     = var.SSM_S3_BUCKET
     key        = "Lab/FsocietyDC.mof"
     source     = "../dsc/Lab/FsocietyDC.mof"
@@ -327,7 +346,7 @@ resource "aws_s3_bucket_object" "fsociety-dc-mof" {
 }
 
 # Add userserver MOF's to S3
-resource "aws_s3_bucket_object" "fsociety-server-mof" {
+resource "aws_s3_object" "fsociety-server-mof" {
     bucket     = var.SSM_S3_BUCKET
     key        = "Lab/FsocietyServer.mof"
     source     = "../dsc/Lab/FsocietyServer.mof"
@@ -335,7 +354,7 @@ resource "aws_s3_bucket_object" "fsociety-server-mof" {
 }
 
 # Add ecorp.local MOF's to S3
-resource "aws_s3_bucket_object" "ecorp-dc-mof" {
+resource "aws_s3_object" "ecorp-dc-mof" {
     bucket     = var.SSM_S3_BUCKET
     key        = "Lab/EcorpDC.mof"
     source     = "../dsc/Lab/EcorpDC.mof"
@@ -343,7 +362,7 @@ resource "aws_s3_bucket_object" "ecorp-dc-mof" {
 }
 
 # Add userserver MOF's to S3
-resource "aws_s3_bucket_object" "ecorp-server-mof" {
+resource "aws_s3_object" "ecorp-server-mof" {
     bucket     = var.SSM_S3_BUCKET
     key        = "Lab/EcorpServer.mof"
     source     = "../dsc/Lab/EcorpServer.mof"
