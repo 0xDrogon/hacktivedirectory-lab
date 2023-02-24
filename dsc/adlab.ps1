@@ -20,6 +20,7 @@ configuration Lab {
     Import-DscResource -ModuleName NetworkingDsc
     Import-DscResource -ModuleName ComputerManagementDsc
     Import-DscResource -ModuleName PSDesiredStateConfiguration
+    Import-DscResource -ModuleName SqlServerDsc
     Import-DscResource -ModuleName WebAdministrationDsc
 
     Node "FsocietyDC" {
@@ -414,6 +415,20 @@ configuration Lab {
             Ensure = "Present"
             Name   = "Web-Server"
         }
+
+        WindowsFeature 'NetFramework45' {
+            Name   = 'NET-Framework-45-Core'
+            Ensure = 'Present'
+        }
+
+        SqlSetup 'InstallDefaultInstance' {
+            InstanceName        = 'MSSQLSERVER'
+            Features            = 'SQLENGINE'
+            SourcePath          = 'C:\SQL2022'
+            SQLSysAdminAccounts = @('Administrators')
+            TcpEnabled          = $true
+            DependsOn           = '[WindowsFeature]NetFramework45'
+        }
         
         User ServerUser {
             Ensure   = "Present"
@@ -717,9 +732,19 @@ configuration Lab {
             Name   = "Domain"
         }
 
-        WindowsFeature FTPServerFeature {
+        WindowsFeature FTPServer {
             Ensure = "Present"
             Name   = "Web-FTP-Server"
+        }
+
+        WindowsFeature FTPService {
+            Ensure = "Present"
+            Name   = "Web-FTP-Service"
+        }
+
+        WindowsFeature FTPExtensibility {
+            Ensure = "Present"
+            Name   = "Web-FTP-Ext"
         }
 
         WebSite FTPSite {
