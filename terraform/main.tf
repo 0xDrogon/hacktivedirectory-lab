@@ -61,8 +61,6 @@ resource "aws_vpc_dhcp_options" "first-dhcp" {
     }
 }
 
-# Add for second ???
-
 # Associate our DHCP configuration with our VPC
 resource "aws_vpc_dhcp_options_association" "first-dhcp-assoc" {
     vpc_id          = aws_vpc.lab-vpc.id
@@ -87,14 +85,6 @@ resource "aws_instance" "fsociety-dc" {
     ]
 }
 
-resource "aws_s3_object" "fsociety-server-sql-file" {
-    bucket     = var.SSM_S3_BUCKET
-    key        = "sql_server_2022_dev_x64.iso"
-    source     = "../utils/sql_server_2022_dev_x64.iso"
-    etag       = filemd5("../utils/sql_server_2022_dev_x64.iso")
-    acl        = "public-read" 
-}
-
 # The User server which will be main foothold
 resource "aws_instance" "fsociety-server" {
     ami                         = data.aws_ami.latest-windows-server.image_id
@@ -113,7 +103,7 @@ resource "aws_instance" "fsociety-server" {
     ]
     user_data = <<EOF
     <powershell>
-        curl -o C:\sql_server_2022_dev_x64.iso https://activedirectory-lab.s3.eu-west-1.amazonaws.com/sql_server_2022_dev_x64.iso
+        Invoke-WebRequest https://drive.tecnico.ulisboa.pt/download/1132973718312167 -OutFile C:\sql_server_2022_dev_x64.iso
         New-Item -Path C:\SQL2022 -ItemType Directory
         $mountResult = Mount-DiskImage -ImagePath 'C:\sql_server_2022_dev_x64.iso' -PassThru
         $volumeInfo = $mountResult | Get-Volume
@@ -158,7 +148,55 @@ resource "aws_instance" "ecorp-server" {
     vpc_security_group_ids = [
         aws_security_group.second-sg.id,
     ]
+    user_data = <<EOF
+    <powershell>
+        Install-WindowsFeature Web-FTP-Server -IncludeAllSubFeature
+        Import-Module WebAdministration
+        $FTPSiteName = 'Default FTP Site'
+        $FTPRootDir = 'C:\inetpub\ftproot'
+        $FTPPort = 21
+        New-WebFtpSite -Name $FTPSiteName -Port $FTPPort -PhysicalPath $FTPRootDir
+        $FTPSitePath = "IIS:\Sites\$FTPSiteName"
+        $BasicAuth = 'ftpServer.security.authentication.basicAuthentication.enabled'
+        Set-ItemProperty -Path $FTPSitePath -Name $BasicAuth -Value $True
+        $Param = @{
+            Filter   = "/system.ftpServer/security/authorization"
+            Value    = @{
+                accessType  = "Allow"
+                roles       = "Administrators"
+                permissions = 1
+            }
+            PSPath   = 'IIS:\'
+            Location = $FTPSiteName
+        }
+        Add-WebConfiguration @param
+        $SSLPolicy = @(
+            'ftpServer.security.ssl.controlChannelPolicy',
+            'ftpServer.security.ssl.dataChannelPolicy'
+        )
+        Set-ItemProperty -Path $FTPSitePath -Name $SSLPolicy[0] -Value $false
+        Set-ItemProperty -Path $FTPSitePath -Name $SSLPolicy[1] -Value $false
+        $UserAccount = New-Object System.Security.Principal.NTAccount("Administrators")
+        $AccessRule = [System.Security.AccessControl.FileSystemAccessRule]::new($UserAccount,
+            'ReadAndExecute',
+            'ContainerInherit,ObjectInherit',
+            'None',
+            'Allow'
+        )
+        $ACL = Get-Acl -Path $FTPRootDir
+        $ACL.SetAccessRule($AccessRule)
+        $ACL | Set-Acl -Path $FTPRootDir
+        Restart-WebItem "IIS:\Sites\$FTPSiteName"
+    </powershell>
+    EOF
 }
+# Set-ItemProperty "IIS:\Sites\Default-FTP-Site" -Name ftpServer.security.ssl.controlChannelPolicy -Value 0
+# Set-ItemProperty "IIS:\Sites\Default-FTP-Site" -Name ftpServer.security.ssl.dataChannelPolicy -Value 0
+# Set-ItemProperty "IIS:\Sites\Default-FTP-Site" -Name ftpServer.security.authentication.basicAuthentication.enabled -Value $true
+# Set-ItemProperty "IIS:\Sites\Default-FTP-Site" -Name ftpserver.userisolation.mode -Value 3
+# Add-WebConfiguration "/system.ftpServer/security/authorization" -value @{accessType="Allow";roles="";permissions="Read,Write";users="*"} -PSPath IIS:\ -location "Default-FTP-Site"
+# Restart-WebItem "IIS:\Sites\Default-FTP-Site"
+
 
 # The C2 teamserver
 resource "aws_instance" "attacker" {
@@ -208,19 +246,14 @@ resource "null_resource" "attacker-setup" {
         # "sudo apt install -y tshark",
 
         # Installs Proxychains
-        # "sudo apt install -y proxychains4",
+        "sudo apt install -y proxychains4",
+        "sudo sed -i 's/9050/1080/g' /etc/proxychains4.conf",
 
         # Installs Nmap
         "sudo apt install -y nmap",
 
         # Installs HashCat
         "sudo apt install -y hashcat",
-
-        # Installs John the Ripper
-        # "sudo apt install -y john",
-
-        # Installs NBTscan
-        # "sudo apt install -y nbtscan",
 
         # Installs Kerbrute
         "wget https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64 -O kerbrute",
@@ -240,6 +273,58 @@ resource "null_resource" "attacker-setup" {
         "cd .."
         ]
     }
+}
+
+resource "aws_s3_bucket" "ad-lab-bucket" {
+    bucket = var.SSM_S3_BUCKET
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "ad-lab-bucket-lifecycle" {
+    bucket = aws_s3_bucket.ad-lab-bucket.id
+    rule {
+        status = "Enabled"
+        id     = "expire_all_files"
+        expiration {
+            days = 1
+        }
+    }
+}
+
+#resource "aws_s3_bucket_acl" "ad-lab-bucket-acl" {
+#    bucket = var.SSM_S3_BUCKET
+#    acl    = "public-read"
+#}
+
+# Add fsociety.local MOF's to S3
+resource "aws_s3_object" "fsociety-dc-mof" {
+    bucket     = aws_s3_bucket.ad-lab-bucket.id
+    key        = "Lab/FsocietyDC.mof"
+    source     = "../dsc/Lab/FsocietyDC.mof"
+    etag       = filemd5("../dsc/Lab/FsocietyDC.mof")
+}
+
+# Add userserver MOF's to S3
+resource "aws_s3_object" "fsociety-server-mof" {
+    bucket     = aws_s3_bucket.ad-lab-bucket.id
+    key        = "Lab/FsocietyServer.mof"
+    source     = "../dsc/Lab/FsocietyServer.mof"
+    etag       = filemd5("../dsc/Lab/FsocietyServer.mof")
+}
+
+# Add ecorp.local MOF's to S3
+resource "aws_s3_object" "ecorp-dc-mof" {
+    bucket     = aws_s3_bucket.ad-lab-bucket.id
+    key        = "Lab/EcorpDC.mof"
+    source     = "../dsc/Lab/EcorpDC.mof"
+    etag       = filemd5("../dsc/Lab/EcorpDC.mof")
+}
+
+# Add userserver MOF's to S3
+resource "aws_s3_object" "ecorp-server-mof" {
+    bucket     = aws_s3_bucket.ad-lab-bucket.id
+    key        = "Lab/EcorpServer.mof"
+    source     = "../dsc/Lab/EcorpServer.mof"
+    etag       = filemd5("../dsc/Lab/EcorpServer.mof")
 }
 
 # IAM Role required to access SSM from EC2
@@ -337,38 +422,6 @@ resource "aws_security_group" "second-sg" {
     }
 }
 
-# Add fsociety.local MOF's to S3
-resource "aws_s3_object" "fsociety-dc-mof" {
-    bucket     = var.SSM_S3_BUCKET
-    key        = "Lab/FsocietyDC.mof"
-    source     = "../dsc/Lab/FsocietyDC.mof"
-    etag       = filemd5("../dsc/Lab/FsocietyDC.mof")
-}
-
-# Add userserver MOF's to S3
-resource "aws_s3_object" "fsociety-server-mof" {
-    bucket     = var.SSM_S3_BUCKET
-    key        = "Lab/FsocietyServer.mof"
-    source     = "../dsc/Lab/FsocietyServer.mof"
-    etag       = filemd5("../dsc/Lab/FsocietyServer.mof")
-}
-
-# Add ecorp.local MOF's to S3
-resource "aws_s3_object" "ecorp-dc-mof" {
-    bucket     = var.SSM_S3_BUCKET
-    key        = "Lab/EcorpDC.mof"
-    source     = "../dsc/Lab/EcorpDC.mof"
-    etag       = filemd5("../dsc/Lab/EcorpDC.mof")
-}
-
-# Add userserver MOF's to S3
-resource "aws_s3_object" "ecorp-server-mof" {
-    bucket     = var.SSM_S3_BUCKET
-    key        = "Lab/EcorpServer.mof"
-    source     = "../dsc/Lab/EcorpServer.mof"
-    etag       = filemd5("../dsc/Lab/EcorpServer.mof")
-}
-
 # SSM parameters used by DSC
 resource "aws_ssm_parameter" "admin-ssm-parameter" {
     name  = "admin"
@@ -380,12 +433,6 @@ resource "aws_ssm_parameter" "server-user-ssm-parameter" {
     name  = "server-user"
     type  = "SecureString"
     value = "{\"Username\":\"server-user\", \"Password\":\"Password@1\"}"
-}
-
-resource "aws_ssm_parameter" "workstation-user-ssm-parameter" {
-    name  = "workstation-user"
-    type  = "SecureString"
-    value = "{\"Username\":\"workstation-user\", \"Password\":\"Password@1\"}"
 }
 
 resource "aws_ssm_parameter" "fsociety-admin-ssm-parameter" {
