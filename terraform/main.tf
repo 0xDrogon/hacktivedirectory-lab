@@ -429,11 +429,11 @@ resource "aws_ssm_parameter" "admin-ssm-parameter" {
     value = "{\"Username\":\"admin\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
 }
 
-resource "aws_ssm_parameter" "administrator-ssm-parameter" {
-    name  = "Administrator"
-    type  = "SecureString"
-    value = "{\"Username\":\"Administrator\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
-}
+#resource "aws_ssm_parameter" "administrator-ssm-parameter" {
+#    name  = "Administrator"
+#    type  = "SecureString"
+#    value = "{\"Username\":\"Administrator\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
+#}
 
 resource "aws_ssm_parameter" "fsociety-admin-ssm-parameter" {
     name  = "fsociety-admin"
@@ -500,21 +500,21 @@ resource "aws_ssm_parameter" "leslie-romero-ssm-parameter" {
 resource "aws_ssm_parameter" "darlene-alderson-ssm-parameter" {
     name  = "darlene.alderson"
     type  = "SecureString"
-    value = "{\"Username\":\"darlene.alderson\", \"Password\":\"Moonpie\"}"
+    value = "{\"Username\":\"darlene.alderson\", \"Password\":\"M00np1&\"}"
 }
 
 # User with Kerberos preauthentication disabled (ASRepRoasting)
 resource "aws_ssm_parameter" "angela-moss-ssm-parameter" {
     name  = "angela.moss"
     type  = "SecureString"
-    value = "{\"Username\":\"angela.moss\", \"Password\":\"Jogging\"}"
+    value = "{\"Username\":\"angela.moss\", \"Password\":\"Jogging?1988\"}"
 }
 
 # User with weak password (Password spraying)
 resource "aws_ssm_parameter" "leon-ssm-parameter" {
     name  = "leon"
     type  = "SecureString"
-    value = "{\"Username\":\"leon\", \"Password\":\"password123\"}"
+    value = "{\"Username\":\"leon\", \"Password\":\"Password-123\"}"
 }
 
 resource "aws_ssm_parameter" "phillip-price-ssm-parameter" {

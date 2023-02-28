@@ -300,7 +300,7 @@ configuration Lab {
             DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]angela.moss"
         }
 
-        ADUser 'leon' {
+        ADUser leon {
             Ensure     = 'Present'
             UserName   = 'leon'
             Password   = (New-Object System.Management.Automation.PSCredential("leon", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
