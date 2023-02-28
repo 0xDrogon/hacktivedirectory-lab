@@ -429,10 +429,10 @@ resource "aws_ssm_parameter" "admin-ssm-parameter" {
     value = "{\"Username\":\"admin\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
 }
 
-resource "aws_ssm_parameter" "server-user-ssm-parameter" {
-    name  = "server-user"
+resource "aws_ssm_parameter" "administrator-ssm-parameter" {
+    name  = "Administrator"
     type  = "SecureString"
-    value = "{\"Username\":\"server-user\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"Administrator\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
 }
 
 resource "aws_ssm_parameter" "fsociety-admin-ssm-parameter" {
@@ -445,6 +445,12 @@ resource "aws_ssm_parameter" "ecorp-admin-ssm-parameter" {
     name  = "ecorp-admin"
     type  = "SecureString"
     value = "{\"Username\":\"ecorp.local\\\\admin\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
+}
+
+resource "aws_ssm_parameter" "server-user-ssm-parameter" {
+    name  = "server-user"
+    type  = "SecureString"
+    value = "{\"Username\":\"server-user\", \"Password\":\"Password@1\"}"
 }
 
 resource "aws_ssm_parameter" "mr-robot-ssm-parameter" {
@@ -483,22 +489,32 @@ resource "aws_ssm_parameter" "userall-user-ssm-parameter" {
     value = "{\"Username\":\"userall.user\", \"Password\":\"Password@1\"}"
 }
 
-resource "aws_ssm_parameter" "clearpass-user-ssm-parameter" {
-    name  = "clearpass.user"
+# User with cleartext password in the description
+resource "aws_ssm_parameter" "leslie-romero-ssm-parameter" {
+    name  = "leslie.romero"
     type  = "SecureString"
-    value = "{\"Username\":\"clearpass.user\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"leslie.romero\", \"Password\":\"RGFyayBBcm15\"}"
 }
 
-resource "aws_ssm_parameter" "roast-user-ssm-parameter" {
-    name  = "roast.user"
+# (Kerberoasting)
+resource "aws_ssm_parameter" "darlene-alderson-ssm-parameter" {
+    name  = "darlene.alderson"
     type  = "SecureString"
-    value = "{\"Username\":\"roast.user\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"darlene.alderson\", \"Password\":\"Moonpie\"}"
 }
 
-resource "aws_ssm_parameter" "asrep-user-ssm-parameter" {
-    name  = "asrep.user"
+# User with Kerberos preauthentication disabled (ASRepRoasting)
+resource "aws_ssm_parameter" "angela-moss-ssm-parameter" {
+    name  = "angela.moss"
     type  = "SecureString"
-    value = "{\"Username\":\"asrep.user\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"angela.moss\", \"Password\":\"Jogging\"}"
+}
+
+# User with weak password (Password spraying)
+resource "aws_ssm_parameter" "leon-ssm-parameter" {
+    name  = "leon"
+    type  = "SecureString"
+    value = "{\"Username\":\"leon\", \"Password\":\"password123\"}"
 }
 
 resource "aws_ssm_parameter" "phillip-price-ssm-parameter" {
@@ -513,10 +529,10 @@ resource "aws_ssm_parameter" "tyrell-wellick-ssm-parameter" {
     value = "{\"Username\":\"tyrell.wellick\", \"Password\":\"Password@1\"}"
 }
 
-resource "aws_ssm_parameter" "angela-moss-ssm-parameter" {
-    name  = "angela.moss"
+resource "aws_ssm_parameter" "terry-colby-ssm-parameter" {
+    name  = "terry.colby"
     type  = "SecureString"
-    value = "{\"Username\":\"angela.moss\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"terry.colby\", \"Password\":\"Password@1\"}"
 }
 
 output "fsociety-dc_ip" {

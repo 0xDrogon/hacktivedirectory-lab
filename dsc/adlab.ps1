@@ -246,58 +246,67 @@ configuration Lab {
             DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]userall.user"
         }
 
-        ADUser 'clearpass.user' {
+        ADUser 'leslie.romero' {
             Ensure     = 'Present'
-            UserName   = 'clearpass.user'
-            Password   = (New-Object System.Management.Automation.PSCredential("clearpass.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
+            UserName   = 'leslie.romero'
+            Password   = (New-Object System.Management.Automation.PSCredential("leslie.romero", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
             DomainName = 'fsociety.local'
             Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
-        Script "clearpass.user Password in AD" {
+        Script "leslie.romero Password in AD" {
             SetScript = {
-                Set-ADUser -Identity "clearpass.user" -Description "Remember to remove this! Password@1"
+                Set-ADUser -Identity "leslie.romero" -Description "DELETE THIS LATER! Password: RGFyayBBcm15"
             }
             TestScript = { 
                 $false 
             }
             GetScript = { 
-                @{ Result = (Get-ADUser "clearpass.user" ) } 
+                @{ Result = (Get-ADUser "leslie.romero" ) } 
             }
-            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]clearpass.user"
+            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]leslie.romero"
         }
 
-        ADUser 'roast.user' {
+        ADUser 'darlene.alderson' {
             Ensure     = 'Present'
-            UserName   = 'roast.user'
-            Password   = (New-Object System.Management.Automation.PSCredential("roast.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
+            UserName   = 'darlene.alderson'
+            Password   = (New-Object System.Management.Automation.PSCredential("darlene.alderson", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
             DomainName = 'fsociety.local'
             Path       = 'CN=Users,DC=fsociety,DC=local'
             ServicePrincipalNames = "MSSQL/sql.fsociety.local"
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
-        ADUser asrep {
+        ADUser 'angela.moss' {
             Ensure     = 'Present'
-            UserName   = 'asrep.user'
-            Password   = (New-Object System.Management.Automation.PSCredential("asrep.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
+            UserName   = 'angela.moss'
+            Password   = (New-Object System.Management.Automation.PSCredential("angela.moss", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
             DomainName = 'fsociety.local'
             Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
-        Script "asrep.user PreAuth Disable" {
+        Script "angela.moss PreAuth Disable" {
             SetScript = {
-                Set-ADAccountControl -Identity "asrep.user" -DoesNotRequirePreAuth $true
+                Set-ADAccountControl -Identity "angela.moss" -DoesNotRequirePreAuth $true
             }
             TestScript = { 
                 $false 
             }
             GetScript = { 
-                @{ Result = (Get-ADUser "asrep.user" ) } 
+                @{ Result = (Get-ADUser "angela.moss" ) } 
             }
-            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]asrep"
+            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]angela.moss"
+        }
+
+        ADUser 'leon' {
+            Ensure     = 'Present'
+            UserName   = 'leon'
+            Password   = (New-Object System.Management.Automation.PSCredential("leon", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
+            DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
         Script "Fsociety-Server-RDP" {
@@ -337,8 +346,10 @@ configuration Lab {
                 $false
             }
             SetScript = {
-                Set-SmbClientConfiguration -RequireSecuritySignature 0 -EnableSecuritySignature 0 -Confirm -Force
-                Set-SmbServerConfiguration -RequireSecuritySignature 0 -EnableSecuritySignature 0 -Confirm -Force
+                Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" RequireSecuritySignature 0
+                Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" RequireSecuritySignature 0
+                Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" EnableSecuritySignature 0
+                Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" EnableSecuritySignature 0
             }
         }
 
@@ -362,7 +373,7 @@ configuration Lab {
     Node "FsocietyServer" {
         
         WaitForAll DC {
-            ResourceName      = '[ADUser]asrep'
+            ResourceName      = '[ADUser]leon'
             NodeName          = 'Fsociety-DC'
             RetryIntervalSec  = 60
             RetryCount        = 15
@@ -393,31 +404,13 @@ configuration Lab {
             Ensure = 'Present'
         }
 
-        Script GetSQL {
-            GetScript = { 
-                return @{ } 
-            }
-            TestScript = {
-                $false
-            }
-            SetScript = {
-                Invoke-WebRequest https://drive.tecnico.ulisboa.pt/download/1132973718312167 -OutFile C:\sql_server_2022_dev_x64.iso
-                New-Item -Path C:\SQL2022 -ItemType Directory
-                $mountResult = Mount-DiskImage -ImagePath 'C:\sql_server_2022_dev_x64.iso' -PassThru
-                $volumeInfo = $mountResult | Get-Volume
-                $driveInfo = Get-PSDrive -Name $volumeInfo.DriveLetter
-                Copy-Item -Path ( Join-Path -Path $driveInfo.Root -ChildPath '*' ) -Destination C:\SQL2022\ -Recurse
-                Dismount-DiskImage -ImagePath 'C:\sql_server_2022_dev_x64.iso'
-            }
-        }
-
         SqlSetup InstallSQL {
             InstanceName        = 'MSSQLSERVER'
             Features            = 'SQLENGINE'
             SourcePath          = 'C:\SQL2022'
             SQLSysAdminAccounts = @('Administrators')
             TcpEnabled          = $true
-            DependsOn           = '[Script]GetSQL'
+            DependsOn           = '[WindowsFeature]NetFramework45'
         }
         
         User ServerUser {
@@ -592,10 +585,10 @@ configuration Lab {
             DependsOn = "[WaitForADDomain]waitSecondDomain"
         }
 
-        ADUser 'angela.moss' {
+        ADUser 'terry.colby' {
             Ensure     = 'Present'
-            UserName   = 'angela.moss'
-            Password   = (New-Object System.Management.Automation.PSCredential("angela.moss", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
+            UserName   = 'terry.colby'
+            Password   = (New-Object System.Management.Automation.PSCredential("terry.colby", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
             DomainName = 'ecorp.local'
             Path       = 'CN=Users,DC=ecorp,DC=local'
             DependsOn = "[WaitForADDomain]waitSecondDomain"
@@ -681,7 +674,7 @@ configuration Lab {
     Node "EcorpServer" {
         
         WaitForAll DC {
-            ResourceName      = '[ADUser]angela.moss'
+            ResourceName      = '[ADUser]terry.colby'
             NodeName          = 'Ecorp-DC'
             RetryIntervalSec  = 60
             RetryCount        = 15
