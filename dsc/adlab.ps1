@@ -22,10 +22,10 @@ configuration Lab {
     Import-DscResource -ModuleName PSDesiredStateConfiguration
     Import-DscResource -ModuleName SqlServerDsc
 
-    Node "FsocietyDC" {
+    Node "DC01" {
 
         Computer NewName {
-            Name = "Fsociety-DC"
+            Name = "DC01"
         }
         
         WindowsFeature ADDSInstall {
@@ -171,7 +171,7 @@ configuration Lab {
         Script "constrained.user constrained Delegation Set" {
             SetScript = {
                 $user = (Get-ADUser -Identity "constrained.user").DistinguishedName
-                Set-ADObject -Identity $user -Add @{"msDS-AllowedToDelegateTo" = @("CIFS/Fsociety-DC","CIFS/Fsociety-DC.fsociety.local","CIFS/Fsociety-DC.fsociety.local/fsociety.local")}
+                Set-ADObject -Identity $user -Add @{"msDS-AllowedToDelegateTo" = @("CIFS/DC01","CIFS/DC01.fsociety.local","CIFS/DC01.fsociety.local/fsociety.local")}
             }
             TestScript = { 
                 $false 
@@ -312,13 +312,13 @@ configuration Lab {
         Script "Fsociety-Server-RDP" {
             SetScript = {
                 Start-Sleep -Seconds 300
-                Invoke-Command -ComputerName "Fsociety-Server" -Scriptblock {net localgroup "Remote Desktop Users" "fsociety\domain users" /add}
+                Invoke-Command -ComputerName "SRV01" -Scriptblock {net localgroup "Remote Desktop Users" "fsociety\domain users" /add}
             }
             TestScript = { 
                 $false 
             }
             GetScript = { 
-                @{ Result = (Get-ADComputer "Fsociety-Server" ) } 
+                @{ Result = (Get-ADComputer "SRV01" ) } 
             }
             PsDscRunAsCredential = $firstDomainCred
             DependsOn = "[WaitForADDomain]waitFirstDomain"
@@ -326,14 +326,14 @@ configuration Lab {
 
         Script "Fsociety-Server constrained Delegation Set" {
             SetScript = {
-                $comp = (Get-ADComputer -Identity "Fsociety-Server").DistinguishedName
-                Set-ADObject -Identity $comp -Add @{"msDS-AllowedToDelegateTo" = @("HOST/Fsociety-DC","HOST/Fsociety-DC.fsociety.local","HOST/Fsociety-DC.fsociety.local/fsociety.local")}
+                $comp = (Get-ADComputer -Identity "SRV01").DistinguishedName
+                Set-ADObject -Identity $comp -Add @{"msDS-AllowedToDelegateTo" = @("HOST/DC01","HOST/DC01.fsociety.local","HOST/DC01.fsociety.local/fsociety.local")}
             }
             TestScript = { 
                 $false 
             }
             GetScript = { 
-                @{ Result = (Get-ADComputer "Fsociety-Server" ) } 
+                @{ Result = (Get-ADComputer "SRV01" ) } 
             }
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
@@ -370,11 +370,11 @@ configuration Lab {
         }
     }
 
-    Node "FsocietyServer" {
+    Node "SRV01" {
         
         WaitForAll DC {
             ResourceName      = '[ADUser]leon'
-            NodeName          = 'Fsociety-DC'
+            NodeName          = 'DC01'
             RetryIntervalSec  = 60
             RetryCount        = 15
         }
@@ -470,17 +470,17 @@ configuration Lab {
         }
 
         Computer JoinDomain {
-            Name = "Fsociety-Server"
+            Name = "SRV01"
             DomainName = $firstDomainName
             Credential = $firstDomainCred
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
     }
 
-    Node "EcorpDC" {
+    Node "DC02" {
 
         Computer NewName {
-            Name = "Ecorp-DC"
+            Name = "DC02"
         }
         
         WindowsFeature ADDSInstall {
@@ -615,13 +615,13 @@ configuration Lab {
         Script "Ecorp-Server-RDP" {
             SetScript = {
                 Start-Sleep -Seconds 300
-                Invoke-Command -ComputerName "Ecorp-Server" -Scriptblock {net localgroup "Remote Desktop Users" "ecorp\domain users" /add}
+                Invoke-Command -ComputerName "SRV02" -Scriptblock {net localgroup "Remote Desktop Users" "ecorp\domain users" /add}
             }
             TestScript = { 
                 $false 
             }
             GetScript = { 
-                @{ Result = (Get-ADComputer "Ecorp-Server" ) } 
+                @{ Result = (Get-ADComputer "SRV02" ) } 
             }
             PsDscRunAsCredential = $secondDomainCred
             DependsOn = "[WaitForADDomain]waitFirstDomain"
@@ -629,14 +629,14 @@ configuration Lab {
 
         Script "Ecorp-Server constrained Delegation Set" {
             SetScript = {
-                $comp = (Get-ADComputer -Identity "Ecorp-Server").DistinguishedName
-                Set-ADObject -Identity $comp -Add @{"msDS-AllowedToDelegateTo" = @("HOST/Ecorp-DC","HOST/Ecorp-DC.ecorp.local","HOST/Ecorp-DC.ecorp.local/ecorp.local")}
+                $comp = (Get-ADComputer -Identity "SRV02").DistinguishedName
+                Set-ADObject -Identity $comp -Add @{"msDS-AllowedToDelegateTo" = @("HOST/DC02","HOST/DC02.ecorp.local","HOST/DC02.ecorp.local/ecorp.local")}
             }
             TestScript = { 
                 $false 
             }
             GetScript = { 
-                @{ Result = (Get-ADComputer "Ecorp-Server" ) } 
+                @{ Result = (Get-ADComputer "SRV02" ) } 
             }
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
@@ -671,11 +671,11 @@ configuration Lab {
         }
     }
 
-    Node "EcorpServer" {
+    Node "SRV02" {
         
         WaitForAll DC {
             ResourceName      = '[ADUser]terry.colby'
-            NodeName          = 'Ecorp-DC'
+            NodeName          = 'DC02'
             RetryIntervalSec  = 60
             RetryCount        = 15
         }
@@ -767,7 +767,7 @@ configuration Lab {
         }
 
         Computer JoinDomain {
-            Name = "Ecorp-Server"
+            Name = "SRV02"
             DomainName = $secondDomainName
             Credential = $secondDomainCred
             DependsOn = "[WaitForADDomain]waitSecondDomain"
@@ -778,30 +778,30 @@ configuration Lab {
 $ConfigData = @{
     AllNodes = @(
         @{
-            Nodename                    = "FsocietyDC"
-            Role                        = "Fsociety DC"
+            Nodename                    = "DC01"
+            Role                        = "DC01"
             RetryCount                  = 0
             RetryIntervalSec            = 0
             PsDscAllowPlainTextPassword = $true
         },
         @{
-            Nodename                    = "FsocietyServer"
-            Role                        = "Fsociety Server"
+            Nodename                    = "SRV01"
+            Role                        = "SRV01"
             RetryCount                  = 0
             RetryIntervalSec            = 0
             PsDscAllowPlainTextPassword = $true
             PsDscAllowDomainUser        = $true
         },
         @{
-            Nodename                    = "EcorpDC"
-            Role                        = "Ecorp DC"
+            Nodename                    = "DC02"
+            Role                        = "DC02"
             RetryCount                  = 0
             RetryIntervalSec            = 0
             PsDscAllowPlainTextPassword = $true
         },
         @{
-            Nodename                    = "EcorpServer"
-            Role                        = "Ecorp Server"
+            Nodename                    = "SRV02"
+            Role                        = "SRV02"
             RetryCount                  = 0
             RetryIntervalSec            = 0
             PsDscAllowPlainTextPassword = $true

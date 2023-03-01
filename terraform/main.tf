@@ -78,7 +78,7 @@ resource "aws_instance" "fsociety-dc" {
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "Fsociety-DC"
+        Name      = "DC01"
     }
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
@@ -96,7 +96,7 @@ resource "aws_instance" "fsociety-server" {
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "Fsociety-Server"
+        Name      = "SRV01"
     }
     vpc_security_group_ids = [
         aws_security_group.first-sg.id,
@@ -125,7 +125,7 @@ resource "aws_instance" "ecorp-dc" {
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "Ecorp-DC"
+        Name      = "DC02"
     }
     vpc_security_group_ids = [
         aws_security_group.second-sg.id,
@@ -143,7 +143,7 @@ resource "aws_instance" "ecorp-server" {
     iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
     tags = {
         Workspace = "${terraform.workspace}"
-        Name      = "Ecorp-Server"
+        Name      = "SRV02"
     }
     vpc_security_group_ids = [
         aws_security_group.second-sg.id,
@@ -298,33 +298,33 @@ resource "aws_s3_bucket_lifecycle_configuration" "ad-lab-bucket-lifecycle" {
 # Add fsociety.local MOF's to S3
 resource "aws_s3_object" "fsociety-dc-mof" {
     bucket     = aws_s3_bucket.ad-lab-bucket.id
-    key        = "Lab/FsocietyDC.mof"
-    source     = "../dsc/Lab/FsocietyDC.mof"
-    etag       = filemd5("../dsc/Lab/FsocietyDC.mof")
+    key        = "Lab/DC01.mof"
+    source     = "../dsc/Lab/DC01.mof"
+    etag       = filemd5("../dsc/Lab/DC01.mof")
 }
 
 # Add userserver MOF's to S3
 resource "aws_s3_object" "fsociety-server-mof" {
     bucket     = aws_s3_bucket.ad-lab-bucket.id
-    key        = "Lab/FsocietyServer.mof"
-    source     = "../dsc/Lab/FsocietyServer.mof"
-    etag       = filemd5("../dsc/Lab/FsocietyServer.mof")
+    key        = "Lab/SRV01.mof"
+    source     = "../dsc/Lab/SRV01.mof"
+    etag       = filemd5("../dsc/Lab/SRV01.mof")
 }
 
 # Add ecorp.local MOF's to S3
 resource "aws_s3_object" "ecorp-dc-mof" {
     bucket     = aws_s3_bucket.ad-lab-bucket.id
-    key        = "Lab/EcorpDC.mof"
-    source     = "../dsc/Lab/EcorpDC.mof"
-    etag       = filemd5("../dsc/Lab/EcorpDC.mof")
+    key        = "Lab/DC02.mof"
+    source     = "../dsc/Lab/DC02.mof"
+    etag       = filemd5("../dsc/Lab/DC02.mof")
 }
 
 # Add userserver MOF's to S3
 resource "aws_s3_object" "ecorp-server-mof" {
     bucket     = aws_s3_bucket.ad-lab-bucket.id
-    key        = "Lab/EcorpServer.mof"
-    source     = "../dsc/Lab/EcorpServer.mof"
-    etag       = filemd5("../dsc/Lab/EcorpServer.mof")
+    key        = "Lab/SRV02.mof"
+    source     = "../dsc/Lab/SRV02.mof"
+    etag       = filemd5("../dsc/Lab/SRV02.mof")
 }
 
 # IAM Role required to access SSM from EC2
@@ -429,12 +429,6 @@ resource "aws_ssm_parameter" "admin-ssm-parameter" {
     value = "{\"Username\":\"admin\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
 }
 
-#resource "aws_ssm_parameter" "administrator-ssm-parameter" {
-#    name  = "Administrator"
-#    type  = "SecureString"
-#    value = "{\"Username\":\"Administrator\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
-#}
-
 resource "aws_ssm_parameter" "fsociety-admin-ssm-parameter" {
     name  = "fsociety-admin"
     type  = "SecureString"
@@ -496,7 +490,7 @@ resource "aws_ssm_parameter" "leslie-romero-ssm-parameter" {
     value = "{\"Username\":\"leslie.romero\", \"Password\":\"RGFyayBBcm15\"}"
 }
 
-# (Kerberoasting)
+# User with Service Principal Name (Kerberoasting)
 resource "aws_ssm_parameter" "darlene-alderson-ssm-parameter" {
     name  = "darlene.alderson"
     type  = "SecureString"
@@ -514,7 +508,7 @@ resource "aws_ssm_parameter" "angela-moss-ssm-parameter" {
 resource "aws_ssm_parameter" "leon-ssm-parameter" {
     name  = "leon"
     type  = "SecureString"
-    value = "{\"Username\":\"leon\", \"Password\":\"Password-123\"}"
+    value = "{\"Username\":\"leon\", \"Password\":\"Password123\"}"
 }
 
 resource "aws_ssm_parameter" "phillip-price-ssm-parameter" {
@@ -535,24 +529,24 @@ resource "aws_ssm_parameter" "terry-colby-ssm-parameter" {
     value = "{\"Username\":\"terry.colby\", \"Password\":\"Password@1\"}"
 }
 
-output "fsociety-dc_ip" {
+output "dc01_ip" {
     value       = "${aws_instance.fsociety-dc.public_ip}"
-    description = "Public IP of Fsociety-DC"
+    description = "Public IP of DC01"
 }
 
-output "fsociety-server_ip" {
+output "srv01_ip" {
     value       = "${aws_instance.fsociety-server.public_ip}"
-    description = "Public IP of Fsociety-Server"
+    description = "Public IP of SRV01"
 }
 
-output "ecorp-dc_ip" {
+output "dc02_ip" {
     value       = "${aws_instance.ecorp-dc.public_ip}"
-    description = "Public IP of Ecorp-DC"
+    description = "Public IP of DC02"
 }
 
-output "ecorp-server_ip" {
+output "srv02_ip" {
     value       = "${aws_instance.ecorp-server.public_ip}"
-    description = "Public IP of Ecorp-Server"
+    description = "Public IP of SRV02"
 }
 
 output "attacker_ip" {
@@ -567,13 +561,13 @@ output "timestamp" {
 # Apply our DSC via SSM to fsociety.local
 resource "aws_ssm_association" "fsociety-dc" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "Fsociety-DC"
+    association_name = "DC01"
     targets {
         key    = "InstanceIds"
         values = [aws_instance.fsociety-dc.id]
     }
     parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/FsocietyDC.mof"
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/DC01.mof"
         RebootBehavior = "Immediately"
     }
 }
@@ -581,13 +575,13 @@ resource "aws_ssm_association" "fsociety-dc" {
 # Apply our DSC via SSM to fsociety-server
 resource "aws_ssm_association" "fsociety-server" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "Fsociety-server"
+    association_name = "SRV01"
     targets {
         key    = "InstanceIds"
         values = [aws_instance.fsociety-server.id]
     }
     parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/FsocietyServer.mof"
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/SRV01.mof"
         RebootBehavior = "Immediately"
     }
 }
@@ -595,13 +589,13 @@ resource "aws_ssm_association" "fsociety-server" {
 # Apply our DSC via SSM to ecorp.local
 resource "aws_ssm_association" "ecorp-dc" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "Ecorp-DC"
+    association_name = "DC02"
     targets {
         key    = "InstanceIds"
         values = [aws_instance.ecorp-dc.id]
     }
     parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/EcorpDC.mof"
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/DC02.mof"
         RebootBehavior = "Immediately"
     }
 }
@@ -609,13 +603,13 @@ resource "aws_ssm_association" "ecorp-dc" {
 # Apply our DSC via SSM to ecorp-server
 resource "aws_ssm_association" "ecorp-server" {
     name             = "AWS-ApplyDSCMofs"
-    association_name = "Ecorp-server"
+    association_name = "SRV02"
     targets {
         key    = "InstanceIds"
         values = [aws_instance.ecorp-server.id]
     }
     parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/EcorpServer.mof"
+        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/SRV02.mof"
         RebootBehavior = "Immediately"
     }
 }
