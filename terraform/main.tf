@@ -227,9 +227,9 @@ resource "null_resource" "attacker-setup" {
     }
 }
 
-# Creates a bucket to store MOF files
+# Creates S3 bucket to store MOF files
 resource "aws_s3_bucket" "ad-lab-bucket" {
-    bucket = var.SSM_S3_BUCKET
+    bucket = var.S3_BUCKET
 }
 resource "aws_s3_bucket_lifecycle_configuration" "ad-lab-bucket-lifecycle" {
     bucket = aws_s3_bucket.ad-lab-bucket.id
@@ -502,7 +502,7 @@ resource "aws_ssm_association" "fsociety-dc" {
         values = [aws_instance.fsociety-dc.id]
     }
     parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/DC01.mof"
+        MofsToApply    = "s3:${var.S3_BUCKET}:Lab/DC01.mof"
         RebootBehavior = "Immediately"
     }
 }
@@ -514,7 +514,7 @@ resource "aws_ssm_association" "fsociety-server" {
         values = [aws_instance.fsociety-server.id]
     }
     parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/SRV01.mof"
+        MofsToApply    = "s3:${var.S3_BUCKET}:Lab/SRV01.mof"
         RebootBehavior = "Immediately"
     }
 }
@@ -526,7 +526,7 @@ resource "aws_ssm_association" "ecorp-dc" {
         values = [aws_instance.ecorp-dc.id]
     }
     parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/DC02.mof"
+        MofsToApply    = "s3:${var.S3_BUCKET}:Lab/DC02.mof"
         RebootBehavior = "Immediately"
     }
 }
@@ -538,7 +538,7 @@ resource "aws_ssm_association" "ecorp-server" {
         values = [aws_instance.ecorp-server.id]
     }
     parameters = {
-        MofsToApply    = "s3:${var.SSM_S3_BUCKET}:Lab/SRV02.mof"
+        MofsToApply    = "s3:${var.S3_BUCKET}:Lab/SRV02.mof"
         RebootBehavior = "Immediately"
     }
 }

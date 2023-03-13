@@ -54,7 +54,7 @@ Copy the output (your public key) and store it under `terraform/keys/terraform_k
 
 ### 3. Terraform variables
 
-You need to fill in some variables in Terraform's [vars.tf](./terraform/vars.tf) file that are specific to you. First, you need to add the IP address (or list of IP addresses) that you are going to be using to manage the deployed instances in the `MANAGEMENT_IPS` variable. Then, choose a name for your S3 bucket and assign it to the `SSM_S3_BUCKET` variable (mind that the name must be globally unique!).
+You need to fill in some variables in Terraform's [vars.tf](./terraform/vars.tf) file that are specific to you. First, you need to add the IP address (or list of IP addresses) that you are going to be using to manage the deployed instances in the `MANAGEMENT_IPS` variable. Then, choose a name for your S3 bucket and assign it to the `S3_BUCKET` variable (mind that the name must be globally unique!).
 
 ### 4. Deployment
 
@@ -75,6 +75,7 @@ $ cd terraform
 $ terraform destroy
 ```
 
+
 ## Connecting to the environment
 
 You can use RDP to connect to all Windows Servers using the domain users and respective credentials.
@@ -84,6 +85,7 @@ The attacker instance can be accessed by using SSH with the private key previous
 ```
 $ ssh -i terraform/keys/terraform_key.pem admin@<attacker_ip>
 ```
+
 
 ## Attacks tested (so far)
 
