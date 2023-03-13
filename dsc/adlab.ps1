@@ -121,151 +121,34 @@ configuration Lab {
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
-        ADUser 'dnsadmin.user' {
-            Ensure     = 'Present'
-            UserName   = 'dnsadmin.user'
-            Password   = (New-Object System.Management.Automation.PSCredential("dnsadmin.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'fsociety.local'
-            Path       = 'CN=Users,DC=fsociety,DC=local'
-            DependsOn = "[WaitForADDomain]waitFirstDomain"
-        }
-
         ADGroup DnsAdmin {
             Ensure = "Present"
             GroupName = "DnsAdmins"
-            MembersToInclude = "dnsadmin.user"
-            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]dnsadmin.user"
+            MembersToInclude = "mr.robot"
+            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]mr.robot"
         }
 
-        ADUser 'unconstrained.user' {
+        ADUser 'elliot.alderson' {
             Ensure     = 'Present'
-            UserName   = 'unconstrained.user'
-            Password   = (New-Object System.Management.Automation.PSCredential("unconstrained.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
+            UserName   = 'elliot.alderson'
+            Password   = (New-Object System.Management.Automation.PSCredential("elliot.alderson", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
             DomainName = 'fsociety.local'
             Path       = 'CN=Users,DC=fsociety,DC=local'
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
-        Script "unconstrained.user Unconstrained Delegation Set" {
+        Script "elliot.alderson Constrained Delegation Set" {
             SetScript = {
-                Set-ADAccountControl -Identity "unconstrained.user" -TrustedForDelegation $True
-            }
-            TestScript = { 
-                $false 
-            }
-            GetScript = { 
-                @{ Result = (Get-ADUser "unconstrained.user" ) } 
-            }
-            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]unconstrained.user"
-        }
-
-        ADUser 'constrained.user' {
-            Ensure     = 'Present'
-            UserName   = 'constrained.user'
-            Password   = (New-Object System.Management.Automation.PSCredential("constrained.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'fsociety.local'
-            Path       = 'CN=Users,DC=fsociety,DC=local'
-            DependsOn = "[WaitForADDomain]waitFirstDomain"
-        }
-
-        Script "constrained.user constrained Delegation Set" {
-            SetScript = {
-                $user = (Get-ADUser -Identity "constrained.user").DistinguishedName
+                $user = (Get-ADUser -Identity "elliot.alderson").DistinguishedName
                 Set-ADObject -Identity $user -Add @{"msDS-AllowedToDelegateTo" = @("CIFS/DC01","CIFS/DC01.fsociety.local","CIFS/DC01.fsociety.local/fsociety.local")}
             }
             TestScript = { 
                 $false 
             }
             GetScript = { 
-                @{ Result = (Get-ADUser "constrained.user" ) } 
+                @{ Result = (Get-ADUser "elliot.alderson" ) } 
             }
-            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]constrained.user"
-        }
-
-        ADUser 'userwrite.user' {
-            Ensure     = 'Present'
-            UserName   = 'userwrite.user'
-            Password   = (New-Object System.Management.Automation.PSCredential("userwrite.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'fsociety.local'
-            Path       = 'CN=Users,DC=fsociety,DC=local'
-            DependsOn = "[WaitForADDomain]waitFirstDomain"
-        }
-
-        Script "userwrite.user Write Permissions on User Node" {
-            SetScript = {
-                $Destination = (Get-ADUser -Identity "constrained.user").DistinguishedName
-                $Source = (Get-ADUser -Identity "userwrite.user").sid
-                $Rights = "GenericWrite"
-                $ADObject = [ADSI]("LDAP://" + $Destination)
-                $identity = $Source
-                $adRights = [System.DirectoryServices.ActiveDirectoryRights]$Rights
-                $type = [System.Security.AccessControl.AccessControlType] "Allow"
-                $inheritanceType = [System.DirectoryServices.ActiveDirectorySecurityInheritance] "All"
-                $ACE = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $identity,$adRights,$type,$inheritanceType
-                $ADObject.psbase.ObjectSecurity.AddAccessRule($ACE)
-                $ADObject.psbase.commitchanges()
-            }
-            TestScript = { 
-                $false 
-            }
-            GetScript = { 
-                @{ Result = (Get-ADUser "userwrite.user" ) } 
-            }
-            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]userwrite.user"
-        }
-
-        ADUser 'userall.user' {
-            Ensure     = 'Present'
-            UserName   = 'userall.user'
-            Password   = (New-Object System.Management.Automation.PSCredential("userall.user", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'fsociety.local'
-            Path       = 'CN=Users,DC=fsociety,DC=local'
-            DependsOn = "[WaitForADDomain]waitFirstDomain"
-        }
-
-        Script "userall.user GenericAll Permissions on User Node" {
-            SetScript = {
-                $Destination = (Get-ADUser -Identity "userwrite.user").DistinguishedName
-                $Source = (Get-ADUser -Identity "userall.user").sid
-                $Rights = "GenericAll"
-                $ADObject = [ADSI]("LDAP://" + $Destination)
-                $identity = $Source
-                $adRights = [System.DirectoryServices.ActiveDirectoryRights]$Rights
-                $type = [System.Security.AccessControl.AccessControlType] "Allow"
-                $inheritanceType = [System.DirectoryServices.ActiveDirectorySecurityInheritance] "All"
-                $ACE = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $identity,$adRights,$type,$inheritanceType
-                $ADObject.psbase.ObjectSecurity.AddAccessRule($ACE)
-                $ADObject.psbase.commitchanges()
-            }
-            TestScript = { 
-                $false 
-            }
-            GetScript = { 
-                @{ Result = (Get-ADUser "userall.user" ) } 
-            }
-            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]userall.user"
-        }
-
-        ADUser 'leslie.romero' {
-            Ensure     = 'Present'
-            UserName   = 'leslie.romero'
-            Password   = (New-Object System.Management.Automation.PSCredential("leslie.romero", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
-            DomainName = 'fsociety.local'
-            Path       = 'CN=Users,DC=fsociety,DC=local'
-            DependsOn = "[WaitForADDomain]waitFirstDomain"
-        }
-
-        Script "leslie.romero Password in AD" {
-            SetScript = {
-                Set-ADUser -Identity "leslie.romero" -Description "DELETE THIS LATER! Password: RGFyayBBcm15"
-            }
-            TestScript = { 
-                $false 
-            }
-            GetScript = { 
-                @{ Result = (Get-ADUser "leslie.romero" ) } 
-            }
-            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]leslie.romero"
+            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]elliot.alderson"
         }
 
         ADUser 'darlene.alderson' {
@@ -289,6 +172,28 @@ configuration Lab {
                 @{ Result = (Get-ADUser "darlene.alderson" ) } 
             }
             DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]darlene.alderson"
+        }
+
+        ADUser 'leslie.romero' {
+            Ensure     = 'Present'
+            UserName   = 'leslie.romero'
+            Password   = (New-Object System.Management.Automation.PSCredential("leslie.romero", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
+            DomainName = 'fsociety.local'
+            Path       = 'CN=Users,DC=fsociety,DC=local'
+            DependsOn = "[WaitForADDomain]waitFirstDomain"
+        }
+
+        Script "leslie.romero Password in AD" {
+            SetScript = {
+                Set-ADUser -Identity "leslie.romero" -Description "DELETE THIS LATER! Password: RGFyayBBcm15"
+            }
+            TestScript = { 
+                $false 
+            }
+            GetScript = { 
+                @{ Result = (Get-ADUser "leslie.romero" ) } 
+            }
+            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]leslie.romero"
         }
 
         ADUser 'angela.moss' {
@@ -322,7 +227,7 @@ configuration Lab {
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
-        Script "Fsociety-Server constrained Delegation Set" {
+        Script "Fsociety-Server Constrained Delegation Set" {
             SetScript = {
                 $comp = (Get-ADComputer -Identity "SRV01").DistinguishedName
                 Set-ADObject -Identity $comp -Add @{"msDS-AllowedToDelegateTo" = @("HOST/DC01","HOST/DC01.fsociety.local","HOST/DC01.fsociety.local/fsociety.local")}

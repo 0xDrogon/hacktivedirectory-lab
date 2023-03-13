@@ -367,101 +367,67 @@ resource "aws_ssm_parameter" "admin-ssm-parameter" {
     type  = "SecureString"
     value = "{\"Username\":\"admin\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
 }
-
 resource "aws_ssm_parameter" "fsociety-admin-ssm-parameter" {
     name  = "fsociety-admin"
     type  = "SecureString"
     value = "{\"Username\":\"fsociety.local\\\\admin\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
 }
-
 resource "aws_ssm_parameter" "ecorp-admin-ssm-parameter" {
     name  = "ecorp-admin"
     type  = "SecureString"
     value = "{\"Username\":\"ecorp.local\\\\admin\", \"Password\":\"I_4m_D0m41n_Adm1n15tr4t0r\"}"
 }
-
 resource "aws_ssm_parameter" "server-user-ssm-parameter" {
     name  = "server-user"
     type  = "SecureString"
-    value = "{\"Username\":\"server-user\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"server-user\", \"Password\":\"I_4m_S3rv3r_U53r\"}"
 }
-
 resource "aws_ssm_parameter" "mr-robot-ssm-parameter" {
+    # DNS admin
     name  = "mr.robot"
     type  = "SecureString"
-    value = "{\"Username\":\"mr.robot\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"mr.robot\", \"Password\":\"!LeAvE_mE_hErE!\"}"
 }
-
-resource "aws_ssm_parameter" "dnsadmin-user-ssm-parameter" {
-    name  = "dnsadmin.user"
+resource "aws_ssm_parameter" "elliot-alderson-ssm-parameter" {
+    # User with Constrained Delegation
+    name  = "elliot.alderson"
     type  = "SecureString"
-    value = "{\"Username\":\"dnsadmin.user\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"elliot.alderson\", \"Password\":\"ShAyLa0805QwErTy\"}"
 }
-
-resource "aws_ssm_parameter" "unconstrainer-user-ssm-parameter" {
-    name  = "unconstrained.user"
-    type  = "SecureString"
-    value = "{\"Username\":\"unconstrained.user\", \"Password\":\"Password@1\"}"
-}
-
-resource "aws_ssm_parameter" "constrained-user-ssm-parameter" {
-    name  = "constrained.user"
-    type  = "SecureString"
-    value = "{\"Username\":\"constrained.user\", \"Password\":\"Password@1\"}"
-}
-
-resource "aws_ssm_parameter" "userwrite-user-ssm-parameter" {
-    name  = "userwrite.user"
-    type  = "SecureString"
-    value = "{\"Username\":\"userwrite.user\", \"Password\":\"Password@1\"}"
-}
-
-resource "aws_ssm_parameter" "userall-user-ssm-parameter" {
-    name  = "userall.user"
-    type  = "SecureString"
-    value = "{\"Username\":\"userall.user\", \"Password\":\"Password@1\"}"
-}
-
-# User with cleartext password in the description
-resource "aws_ssm_parameter" "leslie-romero-ssm-parameter" {
-    name  = "leslie.romero"
-    type  = "SecureString"
-    value = "{\"Username\":\"leslie.romero\", \"Password\":\"RGFyayBBcm15\"}"
-}
-
-# User with Service Principal Name (Kerberoasting)
 resource "aws_ssm_parameter" "darlene-alderson-ssm-parameter" {
+    # User with Unconstrained Delegation
     name  = "darlene.alderson"
     type  = "SecureString"
     value = "{\"Username\":\"darlene.alderson\", \"Password\":\"M00np1&\"}"
 }
-
-# User with Kerberos preauthentication disabled (ASRepRoasting)
+resource "aws_ssm_parameter" "leslie-romero-ssm-parameter" {
+    # User with cleartext password in the description
+    name  = "leslie.romero"
+    type  = "SecureString"
+    value = "{\"Username\":\"leslie.romero\", \"Password\":\"RGFyayBBcm15\"}"
+}
 resource "aws_ssm_parameter" "angela-moss-ssm-parameter" {
+    # User with Kerberos preauthentication disabled
     name  = "angela.moss"
     type  = "SecureString"
-    value = "{\"Username\":\"angela.moss\", \"Password\":\"Jogging?1988\"}"
+    value = "{\"Username\":\"angela.moss\", \"Password\":\"Jogging1988\"}"
 }
-
-# User with weak password (Password spraying)
 resource "aws_ssm_parameter" "leon-ssm-parameter" {
+    # User with weak password
     name  = "leon"
     type  = "SecureString"
     value = "{\"Username\":\"leon\", \"Password\":\"Password123\"}"
 }
-
 resource "aws_ssm_parameter" "phillip-price-ssm-parameter" {
     name  = "phillip.price"
     type  = "SecureString"
     value = "{\"Username\":\"phillip.price\", \"Password\":\"Password@1\"}"
 }
-
 resource "aws_ssm_parameter" "tyrell-wellick-ssm-parameter" {
     name  = "tyrell.wellick"
     type  = "SecureString"
     value = "{\"Username\":\"tyrell.wellick\", \"Password\":\"Password@1\"}"
 }
-
 resource "aws_ssm_parameter" "terry-colby-ssm-parameter" {
     name  = "terry.colby"
     type  = "SecureString"
