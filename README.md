@@ -89,18 +89,18 @@ $ ssh -i terraform/keys/terraform_key.pem admin@<attacker_ip>
 
 ## AD domain users and passwords
 
-* admin : I_4m_D0m41n_Adm1n15tr4t0r
-* mr.robot : !LeAvE_mE_hErE!
-* elliot.alderson : ShAyLa_QwErTy_KrIsTa
-* darlene.alderson : M00np1&
-* leslie.romero : RGFyayBBcm15
-* angela.moss : Jogging1988
-* leon : Password123
-* phillip.price : Ecorp0704
-* terry.colby : Ecorp0508
-* tyrell.wellick : VastraGotalandsIan1982
-
-
+| User             | Password     | Domain |
+|------------------|-----------|------------|
+| admin            | I_4m_D0m41n_Adm1n15tr4t0r | fsociety.local |
+| mr.robot         | !LeAvE_mE_hErE!           | fsociety.local |
+| elliot.alderson  | ShAyLa_QwErTy_KrIsTa      | fsociety.local |
+| darlene.alderson | M00np1&                   | fsociety.local |
+| leslie.romero    | RGFyayBBcm15              | fsociety.local |
+| angela.moss      | Jogging1988               | fsociety.local |
+| leon             | Password123               | fsociety.local |
+| phillip.price    | Ecorp0704                 | ecorp.local    |
+| terry.colby      | Ecorp0508                 | ecorp.local    |
+| tyrell.wellick   | VastraGotalandsIan1982    | ecorp.local    |
 
 
 ## Attacks tested (so far)
@@ -123,7 +123,7 @@ The estimated cost of this lab on AWS is 0.12$ per hour (~90$ per month, in case
 
 This project is based on [@PhilKeeble](https://github.com/PhilKeeble/AWS-RedTeam-ADLab)'s version of [@xpn](https://github.com/xpn/DemoLab)'s AD lab and on [GOAD](https://github.com/Orange-Cyberdefense/GOAD).
 
-The naming on this project was inspired by the *Mr. Robot* TV show.
+Names on this project were inspired by the *Mr. Robot* TV show.
 
 
 ## Disclaimer
