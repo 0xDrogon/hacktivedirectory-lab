@@ -78,9 +78,9 @@ $ terraform destroy
 
 ## Connecting to the environment
 
-You can use RDP to connect to all Windows Servers using the domain users and respective credentials.
+You can use RDP to connect to all Windows Servers using the domain users and respective credentials. However, you need to wait about 1 hour after you deploy the lab (check the timestamp outputted by Terraform).
 
-The attacker instance can be accessed by using SSH with the private key previously created:
+The attacker instance can be accessed right after Terraform finishes the execution by using SSH with the private key previously created:
 
 ```
 $ ssh -i terraform/keys/terraform_key.pem admin@<attacker_ip>
