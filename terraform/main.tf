@@ -4,20 +4,20 @@ provider "aws" {
     secret_key = file(var.AWS_SECRET_KEY_PATH)
 }
 
-# Our AWS keypair
+# AWS keypair
 resource "aws_key_pair" "terraformkey" {
     key_name   = "${terraform.workspace}-terraform-lab"
     public_key = file(var.PUBLIC_KEY_PATH)
 }
 
-# Our VPC definition, using a default IP range of 10.0.0.0/16
+# Creates VPC
 resource "aws_vpc" "lab-vpc" {
     cidr_block           = var.VPC_CIDR
     enable_dns_support   = true
     enable_dns_hostnames = true
 }
 
-# Default route required for the VPC to push traffic via gateway
+# Adds default route to push traffic via gateway
 resource "aws_route" "first-internet-route" {
     route_table_id         = aws_vpc.lab-vpc.main_route_table_id
     destination_cidr_block = "0.0.0.0/0"
@@ -29,7 +29,7 @@ resource "aws_internet_gateway" "lab-vpc-gateway" {
     vpc_id = aws_vpc.lab-vpc.id
 }
 
-# Create our first subnet (Defaults to 10.0.1.0/24)
+# Creates first subnet
 resource "aws_subnet" "first-vpc-subnet" {
     vpc_id = aws_vpc.lab-vpc.id
     cidr_block        = var.FSOCIETY_SUBNET_CIDR
@@ -39,7 +39,7 @@ resource "aws_subnet" "first-vpc-subnet" {
     }
 }
 
-# Create our second subnet (Defaults to 10.0.2.0/24)
+# Creates second subnet
 resource "aws_subnet" "second-vpc-subnet" {
     vpc_id = aws_vpc.lab-vpc.id
     cidr_block        = var.ECORP_SUBNET_CIDR
@@ -49,7 +49,7 @@ resource "aws_subnet" "second-vpc-subnet" {
     }
 }
 
-# Set DHCP options for delivering things like DNS servers
+# Sets DHCP options (delivers DNS servers)
 resource "aws_vpc_dhcp_options" "first-dhcp" {
     domain_name          = "fsociety.local"
     domain_name_servers  = [var.FSOCIETY_DC_IP, var.PUBLIC_DNS]
@@ -61,13 +61,13 @@ resource "aws_vpc_dhcp_options" "first-dhcp" {
     }
 }
 
-# Associate our DHCP configuration with our VPC
+# Associates DHCP configuration with the VPC
 resource "aws_vpc_dhcp_options_association" "first-dhcp-assoc" {
     vpc_id          = aws_vpc.lab-vpc.id
     dhcp_options_id = aws_vpc_dhcp_options.first-dhcp.id
 }
 
-# Our first domain controller of the "fsociety.local" domain
+# DC of the fsociety.local domain
 resource "aws_instance" "fsociety-dc" {
     ami                         = data.aws_ami.latest-windows-server.image_id
     instance_type               = "t2.small"
@@ -85,7 +85,7 @@ resource "aws_instance" "fsociety-dc" {
     ]
 }
 
-# The User server which will be main foothold
+# Server of the fsociety.local domain
 resource "aws_instance" "fsociety-server" {
     ami                         = data.aws_ami.latest-windows-server.image_id
     instance_type               = "t2.small"
@@ -114,7 +114,7 @@ resource "aws_instance" "fsociety-server" {
     EOF
 }
 
-# Our second domain controller of the "ecorp.local" domain
+# DC of the ecorp.local domain
 resource "aws_instance" "ecorp-dc" {
     ami                         = data.aws_ami.latest-windows-server.image_id
     instance_type               = "t2.small"
@@ -132,7 +132,7 @@ resource "aws_instance" "ecorp-dc" {
     ]
 }
 
-# The User server which will be main foothold
+# Server of the ecorp.local domain
 resource "aws_instance" "ecorp-server" {
     ami                         = data.aws_ami.latest-windows-server.image_id
     instance_type               = "t2.small"
@@ -156,49 +156,12 @@ resource "aws_instance" "ecorp-server" {
         $FTPRootDir = 'C:\inetpub\ftproot'
         $FTPPort = 21
         New-WebFtpSite -Name $FTPSiteName -Port $FTPPort -PhysicalPath $FTPRootDir
-        $FTPSitePath = "IIS:\Sites\$FTPSiteName"
-        $BasicAuth = 'ftpServer.security.authentication.basicAuthentication.enabled'
-        Set-ItemProperty -Path $FTPSitePath -Name $BasicAuth -Value $True
-        $Param = @{
-            Filter   = "/system.ftpServer/security/authorization"
-            Value    = @{
-                accessType  = "Allow"
-                roles       = "Administrators"
-                permissions = 1
-            }
-            PSPath   = 'IIS:\'
-            Location = $FTPSiteName
-        }
-        Add-WebConfiguration @param
-        $SSLPolicy = @(
-            'ftpServer.security.ssl.controlChannelPolicy',
-            'ftpServer.security.ssl.dataChannelPolicy'
-        )
-        Set-ItemProperty -Path $FTPSitePath -Name $SSLPolicy[0] -Value $false
-        Set-ItemProperty -Path $FTPSitePath -Name $SSLPolicy[1] -Value $false
-        $UserAccount = New-Object System.Security.Principal.NTAccount("Administrators")
-        $AccessRule = [System.Security.AccessControl.FileSystemAccessRule]::new($UserAccount,
-            'ReadAndExecute',
-            'ContainerInherit,ObjectInherit',
-            'None',
-            'Allow'
-        )
-        $ACL = Get-Acl -Path $FTPRootDir
-        $ACL.SetAccessRule($AccessRule)
-        $ACL | Set-Acl -Path $FTPRootDir
         Restart-WebItem "IIS:\Sites\$FTPSiteName"
     </powershell>
     EOF
 }
-# Set-ItemProperty "IIS:\Sites\Default-FTP-Site" -Name ftpServer.security.ssl.controlChannelPolicy -Value 0
-# Set-ItemProperty "IIS:\Sites\Default-FTP-Site" -Name ftpServer.security.ssl.dataChannelPolicy -Value 0
-# Set-ItemProperty "IIS:\Sites\Default-FTP-Site" -Name ftpServer.security.authentication.basicAuthentication.enabled -Value $true
-# Set-ItemProperty "IIS:\Sites\Default-FTP-Site" -Name ftpserver.userisolation.mode -Value 3
-# Add-WebConfiguration "/system.ftpServer/security/authorization" -value @{accessType="Allow";roles="";permissions="Read,Write";users="*"} -PSPath IIS:\ -location "Default-FTP-Site"
-# Restart-WebItem "IIS:\Sites\Default-FTP-Site"
 
-
-# The C2 teamserver
+# Attacker
 resource "aws_instance" "attacker" {
     ami                         = data.aws_ami.latest-debian.image_id
     instance_type               = "t2.small"
@@ -215,7 +178,6 @@ resource "aws_instance" "attacker" {
         aws_security_group.first-sg.id,
     ]
 }
-
 resource "null_resource" "attacker-setup" {
     connection {
         type        = "ssh"
@@ -238,33 +200,23 @@ resource "null_resource" "attacker-setup" {
         "sudo apt install -y git",
         "sudo apt install -y python3-pip",
         "sudo apt update",
-
         # Installs dig & nslookup
         "sudo apt install -y dnsutils",
-
-        # Installs Tshark
-        # "sudo apt install -y tshark",
-
         # Installs Proxychains
         "sudo apt install -y proxychains4",
         "sudo sed -i 's/9050/1080/g' /etc/proxychains4.conf",
-
         # Installs Nmap
         "sudo apt install -y nmap",
-
         # Installs HashCat
         "sudo apt install -y hashcat",
-
         # Installs Kerbrute
         "wget https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64 -O kerbrute",
         "chmod +x kerbrute",
-
         # Installs Responder
         "git clone https://github.com/lgandx/Responder.git",
         "cd Responder",
         "sudo pip install netifaces",
         "cd ..",
-        
         # Installs Impacket
         "git clone https://github.com/fortra/impacket.git",
         "cd impacket",
@@ -275,10 +227,10 @@ resource "null_resource" "attacker-setup" {
     }
 }
 
+# Creates a bucket to store MOF files
 resource "aws_s3_bucket" "ad-lab-bucket" {
     bucket = var.SSM_S3_BUCKET
 }
-
 resource "aws_s3_bucket_lifecycle_configuration" "ad-lab-bucket-lifecycle" {
     bucket = aws_s3_bucket.ad-lab-bucket.id
     rule {
@@ -290,36 +242,25 @@ resource "aws_s3_bucket_lifecycle_configuration" "ad-lab-bucket-lifecycle" {
     }
 }
 
-#resource "aws_s3_bucket_acl" "ad-lab-bucket-acl" {
-#    bucket = var.SSM_S3_BUCKET
-#    acl    = "public-read"
-#}
-
-# Add fsociety.local MOF's to S3
+# Adds MOF files to the bucket
 resource "aws_s3_object" "fsociety-dc-mof" {
     bucket     = aws_s3_bucket.ad-lab-bucket.id
     key        = "Lab/DC01.mof"
     source     = "../dsc/Lab/DC01.mof"
     etag       = filemd5("../dsc/Lab/DC01.mof")
 }
-
-# Add userserver MOF's to S3
 resource "aws_s3_object" "fsociety-server-mof" {
     bucket     = aws_s3_bucket.ad-lab-bucket.id
     key        = "Lab/SRV01.mof"
     source     = "../dsc/Lab/SRV01.mof"
     etag       = filemd5("../dsc/Lab/SRV01.mof")
 }
-
-# Add ecorp.local MOF's to S3
 resource "aws_s3_object" "ecorp-dc-mof" {
     bucket     = aws_s3_bucket.ad-lab-bucket.id
     key        = "Lab/DC02.mof"
     source     = "../dsc/Lab/DC02.mof"
     etag       = filemd5("../dsc/Lab/DC02.mof")
 }
-
-# Add userserver MOF's to S3
 resource "aws_s3_object" "ecorp-server-mof" {
     bucket     = aws_s3_bucket.ad-lab-bucket.id
     key        = "Lab/SRV02.mof"
@@ -347,18 +288,16 @@ resource "aws_iam_role" "ssm_role" {
     }
     EOF
 }
-
 resource "aws_iam_role_policy_attachment" "ssm_role_policy" {
     role       = aws_iam_role.ssm_role.0.name
     policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
 }
-
 resource "aws_iam_instance_profile" "ssm_instance_profile" {
     name  = "${terraform.workspace}_ssm_instance_profile"
     role  = aws_iam_role.ssm_role.0.name
 }
 
-# Security group for first.local
+# Security group for fsociety.local
 resource "aws_security_group" "first-sg" {
     vpc_id = aws_vpc.lab-vpc.id
     # Allow second zone to first
@@ -390,7 +329,7 @@ resource "aws_security_group" "first-sg" {
     }
 }
 
-# Security group for second.local
+# Security group for ecorp.local
 resource "aws_security_group" "second-sg" {
     vpc_id = aws_vpc.lab-vpc.id
     # Allow secure zone to first
@@ -406,7 +345,7 @@ resource "aws_security_group" "second-sg" {
         from_port   = 0
         to_port     = 0
     }
-    # Allow management from Our IP
+    # Allow management from our IP
     ingress {
         protocol    = "-1"
         cidr_blocks = var.MANAGEMENT_IPS
@@ -422,7 +361,7 @@ resource "aws_security_group" "second-sg" {
     }
 }
 
-# SSM parameters used by DSC
+# SSM parameters used by DSC (users and passwords)
 resource "aws_ssm_parameter" "admin-ssm-parameter" {
     name  = "admin"
     type  = "SecureString"
@@ -529,36 +468,32 @@ resource "aws_ssm_parameter" "terry-colby-ssm-parameter" {
     value = "{\"Username\":\"terry.colby\", \"Password\":\"Password@1\"}"
 }
 
+# Outputs
 output "dc01_ip" {
     value       = "${aws_instance.fsociety-dc.public_ip}"
     description = "Public IP of DC01"
 }
-
 output "srv01_ip" {
     value       = "${aws_instance.fsociety-server.public_ip}"
     description = "Public IP of SRV01"
 }
-
 output "dc02_ip" {
     value       = "${aws_instance.ecorp-dc.public_ip}"
     description = "Public IP of DC02"
 }
-
 output "srv02_ip" {
     value       = "${aws_instance.ecorp-server.public_ip}"
     description = "Public IP of SRV02"
 }
-
 output "attacker_ip" {
     value       = "${aws_instance.attacker.public_ip}"
     description = "Public IP of Attacker"
 }
-
 output "timestamp" {
     value = formatdate("hh:mm", timestamp())
 }
 
-# Apply our DSC via SSM to fsociety.local
+# Applying the DSC to the windows machines
 resource "aws_ssm_association" "fsociety-dc" {
     name             = "AWS-ApplyDSCMofs"
     association_name = "DC01"
@@ -571,8 +506,6 @@ resource "aws_ssm_association" "fsociety-dc" {
         RebootBehavior = "Immediately"
     }
 }
-
-# Apply our DSC via SSM to fsociety-server
 resource "aws_ssm_association" "fsociety-server" {
     name             = "AWS-ApplyDSCMofs"
     association_name = "SRV01"
@@ -585,8 +518,6 @@ resource "aws_ssm_association" "fsociety-server" {
         RebootBehavior = "Immediately"
     }
 }
-
-# Apply our DSC via SSM to ecorp.local
 resource "aws_ssm_association" "ecorp-dc" {
     name             = "AWS-ApplyDSCMofs"
     association_name = "DC02"
@@ -599,8 +530,6 @@ resource "aws_ssm_association" "ecorp-dc" {
         RebootBehavior = "Immediately"
     }
 }
-
-# Apply our DSC via SSM to ecorp-server
 resource "aws_ssm_association" "ecorp-server" {
     name             = "AWS-ApplyDSCMofs"
     association_name = "SRV02"
