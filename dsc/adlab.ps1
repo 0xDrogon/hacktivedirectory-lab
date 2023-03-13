@@ -278,6 +278,19 @@ configuration Lab {
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
+        Script "darlene.alderson Unconstrained Delegation Set" {
+            SetScript = {
+                Set-ADAccountControl -Identity "darlene.alderson" -TrustedForDelegation $True
+            }
+            TestScript = { 
+                $false 
+            }
+            GetScript = { 
+                @{ Result = (Get-ADUser "darlene.alderson" ) } 
+            }
+            DependsOn = "[WaitForADDomain]waitFirstDomain", "[ADUser]darlene.alderson"
+        }
+
         ADUser 'angela.moss' {
             Ensure     = 'Present'
             UserName   = 'angela.moss'
@@ -306,21 +319,6 @@ configuration Lab {
             Password   = (New-Object System.Management.Automation.PSCredential("leon", (ConvertTo-SecureString "DoesntMatter" -AsPlainText -Force)))
             DomainName = 'fsociety.local'
             Path       = 'CN=Users,DC=fsociety,DC=local'
-            DependsOn = "[WaitForADDomain]waitFirstDomain"
-        }
-
-        Script "Fsociety-Server-RDP" {
-            SetScript = {
-                Start-Sleep -Seconds 300
-                Invoke-Command -ComputerName "SRV01" -Scriptblock {net localgroup "Remote Desktop Users" "fsociety\domain users" /add}
-            }
-            TestScript = { 
-                $false 
-            }
-            GetScript = { 
-                @{ Result = (Get-ADComputer "SRV01" ) } 
-            }
-            PsDscRunAsCredential = $firstDomainCred
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
 
@@ -475,6 +473,13 @@ configuration Lab {
             Credential = $firstDomainCred
             DependsOn = "[WaitForADDomain]waitFirstDomain"
         }
+
+        Group "Remote Desktop Users" {
+            Ensure = "Present"
+            GroupName   = "Remote Desktop Users"
+            MembersToInclude = "fsociety\domain users"
+            DependsOn = "[Computer]JoinDomain"
+        }
     }
 
     Node "DC02" {
@@ -612,35 +617,6 @@ configuration Lab {
             Ensure = "Present"
         }
 
-        Script "Ecorp-Server-RDP" {
-            SetScript = {
-                Start-Sleep -Seconds 300
-                Invoke-Command -ComputerName "SRV02" -Scriptblock {net localgroup "Remote Desktop Users" "ecorp\domain users" /add}
-            }
-            TestScript = { 
-                $false 
-            }
-            GetScript = { 
-                @{ Result = (Get-ADComputer "SRV02" ) } 
-            }
-            PsDscRunAsCredential = $secondDomainCred
-            DependsOn = "[WaitForADDomain]waitFirstDomain"
-        }
-
-        Script "Ecorp-Server constrained Delegation Set" {
-            SetScript = {
-                $comp = (Get-ADComputer -Identity "SRV02").DistinguishedName
-                Set-ADObject -Identity $comp -Add @{"msDS-AllowedToDelegateTo" = @("HOST/DC02","HOST/DC02.ecorp.local","HOST/DC02.ecorp.local/ecorp.local")}
-            }
-            TestScript = { 
-                $false 
-            }
-            GetScript = { 
-                @{ Result = (Get-ADComputer "SRV02" ) } 
-            }
-            DependsOn = "[WaitForADDomain]waitFirstDomain"
-        }
-
         Script DisableSMBSign {
             GetScript = { 
                 return @{ } 
@@ -771,6 +747,13 @@ configuration Lab {
             DomainName = $secondDomainName
             Credential = $secondDomainCred
             DependsOn = "[WaitForADDomain]waitSecondDomain"
+        }
+
+        Group "Remote Desktop Users" {
+            Ensure = "Present"
+            GroupName   = "Remote Desktop Users"
+            MembersToInclude = "ecorp\domain users"
+            DependsOn = "[Computer]JoinDomain"
         }
     }
 }
