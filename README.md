@@ -87,6 +87,22 @@ $ ssh -i terraform/keys/terraform_key.pem admin@<attacker_ip>
 ```
 
 
+## AD domain users and passwords
+
+* admin : I_4m_D0m41n_Adm1n15tr4t0r
+* mr.robot : !LeAvE_mE_hErE!
+* elliot.alderson : ShAyLa_QwErTy_KrIsTa
+* darlene.alderson : M00np1&
+* leslie.romero : RGFyayBBcm15
+* angela.moss : Jogging1988
+* leon : Password123
+* phillip.price : Ecorp0704
+* terry.colby : Ecorp0508
+* tyrell.wellick : VastraGotalandsIan1982
+
+
+
+
 ## Attacks tested (so far)
 
 * Password Spraying
