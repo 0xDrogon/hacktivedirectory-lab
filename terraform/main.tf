@@ -392,7 +392,7 @@ resource "aws_ssm_parameter" "elliot-alderson-ssm-parameter" {
     # User with Constrained Delegation
     name  = "elliot.alderson"
     type  = "SecureString"
-    value = "{\"Username\":\"elliot.alderson\", \"Password\":\"ShAyLa0805QwErTy\"}"
+    value = "{\"Username\":\"elliot.alderson\", \"Password\":\"ShAyLa_QwErTy_KrIsTa\"}"
 }
 resource "aws_ssm_parameter" "darlene-alderson-ssm-parameter" {
     # User with Unconstrained Delegation
@@ -421,17 +421,17 @@ resource "aws_ssm_parameter" "leon-ssm-parameter" {
 resource "aws_ssm_parameter" "phillip-price-ssm-parameter" {
     name  = "phillip.price"
     type  = "SecureString"
-    value = "{\"Username\":\"phillip.price\", \"Password\":\"Password@1\"}"
-}
-resource "aws_ssm_parameter" "tyrell-wellick-ssm-parameter" {
-    name  = "tyrell.wellick"
-    type  = "SecureString"
-    value = "{\"Username\":\"tyrell.wellick\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"phillip.price\", \"Password\":\"Ecorp0704\"}"
 }
 resource "aws_ssm_parameter" "terry-colby-ssm-parameter" {
     name  = "terry.colby"
     type  = "SecureString"
-    value = "{\"Username\":\"terry.colby\", \"Password\":\"Password@1\"}"
+    value = "{\"Username\":\"terry.colby\", \"Password\":\"Ecorp0508\"}"
+}
+resource "aws_ssm_parameter" "tyrell-wellick-ssm-parameter" {
+    name  = "tyrell.wellick"
+    type  = "SecureString"
+    value = "{\"Username\":\"tyrell.wellick\", \"Password\":\"VastraGotalandsIan1982\"}"
 }
 
 # Outputs
