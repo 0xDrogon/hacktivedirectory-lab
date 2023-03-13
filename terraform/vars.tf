@@ -70,7 +70,7 @@ variable "MANAGEMENT_IPS" {
 }
 
 # Name of AWS S3 bucket (must be globally unique!)
-variable "SSM_S3_BUCKET" {
+variable "S3_BUCKET" {
     # default = "bucket-for-ad-lab"
     default = "YOUR_AWS_S3_BUCKET"
 }
