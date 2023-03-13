@@ -26,8 +26,8 @@ ecorp.local:
 
 ## Requirements
 
-* Terraform CLI installed
-* AWS CLI installed
+* Terraform CLI
+* AWS CLI
 * AWS account
 
 
@@ -35,13 +35,15 @@ ecorp.local:
 
 ### 1. Clone this repository
 
-`$ git clone https://github.com/0xDrogon/activedirectory-lab.git`
+```
+$ git clone https://github.com/0xDrogon/activedirectory-lab.git
+```
 
 ### 2. AWS Setup
 
 Store your AWS access key under `terraform/keys/access_key` and your AWS secret access key under `terraform/keys/secret_key`.
 
-Create an EC2 key pair with private key format `.pem`. Save it under `terraform/keys/terraform_key.pem` and then run:
+Create an EC2 key pair with private key format `.pem`. Save it under `terraform/keys/terraform_key.pem` and run:
 
 ```
 $ chmod 400 terraform/keys/terraform_key.pem
@@ -101,7 +103,7 @@ The estimated cost of this lab on AWS is 0.12$ per hour (~90$ per month, in case
 
 ## Credits
 
-This project is based on [@PhilKeeble](https://github.com/PhilKeeble/AWS-RedTeam-ADLab)'s version of [@xpn](https://github.com/xpn/DemoLab)'s AD lab and [GOAD](https://github.com/Orange-Cyberdefense/GOAD).
+This project is based on [@PhilKeeble](https://github.com/PhilKeeble/AWS-RedTeam-ADLab)'s version of [@xpn](https://github.com/xpn/DemoLab)'s AD lab and on [GOAD](https://github.com/Orange-Cyberdefense/GOAD).
 
 The naming on this project was inspired by the *Mr. Robot* TV show.
 
