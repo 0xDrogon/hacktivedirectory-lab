@@ -1,77 +1,81 @@
-# This a demo vars.tf
-# This file is not completed as there is sensitive information that should not be pushed to git (MANAGEMENT_IPS and SSM_S3_BUCKET)
-
+# Path to AWS access key
 variable "AWS_ACCESS_KEY_PATH" {
     default = "./keys/access_key"
 }
 
+# Path to AWS secret key
 variable "AWS_SECRET_KEY_PATH" {
     default = "./keys/secret_key"
 }
 
+# Path to public key
 variable "PUBLIC_KEY_PATH" {
     default = "./keys/terraform_key.pub"
 }
 
+# Path to private key
 variable "PRIVATE_KEY_PATH" {
     default = "./keys/terraform_key.pem"
 }
 
+# IP addresses of the VPC
 variable "VPC_CIDR" {
     default = "10.0.0.0/16"
 }
 
+# IP addresses of fsociety.local
 variable "FSOCIETY_SUBNET_CIDR" {
     default = "10.0.1.0/24"
 }
 
+# IP addresses of ecorp.local
 variable "ECORP_SUBNET_CIDR" {
     default = "10.0.2.0/24"
 }
 
+# IP address of the DC of fsociety.local
 variable "FSOCIETY_DC_IP" {
     default = "10.0.1.100"
 }
 
+# IP address of the server of fsociety.local
 variable "FSOCIETY_SERVER_IP" {
     default = "10.0.1.50"
 }
 
-variable "FSOCIETY_WORKSTATION_IP" {
-    default = "10.0.1.150"
-}
-
-variable "ATTACKER_IP" {
-    default = "10.0.1.10"
-}
-
+# IP address of the DC of ecorp.local
 variable "ECORP_DC_IP" {
     default = "10.0.2.100"
 }
 
+# IP address of the server of ecorp.local
 variable "ECORP_SERVER_IP" {
     default = "10.0.2.50"
 }
 
-variable "ECORP_WORKSTATION_IP" {
-    default = "10.0.2.150"
+# IP address of the attacker
+variable "ATTACKER_IP" {
+    default = "10.0.1.10"
 }
 
+# IP address of public DNS server
 variable "PUBLIC_DNS" {
     default = "1.1.1.1"
 }
 
+# List of IP addresses allowed to manage instances
 variable "MANAGEMENT_IPS" {
-    # Add in the public IP Address you will be hitting the cloud from, for example the public IP of your home address or VPN
     # default = ["1.2.3.4/32"]
+    default = ["YOUR_IP_ADDR"]
 }
 
+# Name of AWS S3 bucket (must be globally unique!)
 variable "SSM_S3_BUCKET" {
-    # Add in the name of your S3 bucket like the example below
-    # default = "this-is-just-a-fake-bucket"
+    # default = "bucket-for-ad-lab"
+    default = "YOUR_AWS_S3_BUCKET"
 }
 
-# Find latest Windows-Server
+# Finds latest 2019 Windows-Server
 data "aws_ami" "latest-windows-server" {
     most_recent = true
     owners      = ["amazon"]
@@ -81,7 +85,7 @@ data "aws_ami" "latest-windows-server" {
     }
 }
 
-# Find latest Debian
+# Finds latest Debian
 data "aws_ami" "latest-debian" {
     most_recent = true
     owners = ["136693071363"]
