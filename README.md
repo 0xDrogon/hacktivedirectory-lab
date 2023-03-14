@@ -89,18 +89,19 @@ $ ssh -i terraform/keys/terraform_key.pem admin@<attacker_ip>
 
 ## AD domain users and passwords
 
-| User             | Password     | Domain |
-|------------------|-----------|------------|
-| admin            | I_4m_D0m41n_Adm1n15tr4t0r | fsociety.local |
-| mr.robot         | !LeAvE_mE_hErE!           | fsociety.local |
-| elliot.alderson  | ShAyLa_QwErTy_KrIsTa      | fsociety.local |
-| darlene.alderson | M00np1&                   | fsociety.local |
-| leslie.romero    | RGFyayBBcm15              | fsociety.local |
-| angela.moss      | Jogging1988               | fsociety.local |
-| leon             | Password123               | fsociety.local |
-| phillip.price    | Ecorp0704                 | ecorp.local    |
-| terry.colby      | Ecorp0508                 | ecorp.local    |
-| tyrell.wellick   | VastraGotalandsIan1982    | ecorp.local    |
+| User             | Password                  | Domain         | Description                       |
+|------------------|---------------------------|----------------|-----------------------------------|
+| admin            | I_4m_D0m41n_Adm1n15tr4t0r | fsociety.local | Administrator                     |
+| mr.robot         | !LeAvE_mE_hErE!           | fsociety.local | DNS administrator                 |
+| elliot.alderson  | ShAyLa_QwErTy_KrIsTa      | fsociety.local | Constrained delegation            |
+| darlene.alderson | M00np1&                   | fsociety.local | Unconstrained delegation          |
+| leslie.romero    | RGFyayBBcm15              | fsociety.local | Plaintext password in description |
+| angela.moss      | Jogging1988               | fsociety.local | Kerberos preauth disabled         |
+| leon             | Password123               | fsociety.local | Weak password                     |
+| admin            | I_4m_D0m41n_Adm1n15tr4t0r | ecorp.local    | Administrator                     |
+| phillip.price    | Ecorp0704                 | ecorp.local    | Regular user                      |
+| terry.colby      | Ecorp0508                 | ecorp.local    | Regular user                      |
+| tyrell.wellick   | VastraGotalandsIan1982    | ecorp.local    | Regular user                      |
 
 
 ## Attacks tested (so far)
