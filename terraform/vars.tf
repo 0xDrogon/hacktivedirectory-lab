@@ -1,13 +1,3 @@
-# Path to AWS access key
-variable "AWS_ACCESS_KEY_PATH" {
-    default = "./keys/access_key"
-}
-
-# Path to AWS secret key
-variable "AWS_SECRET_KEY_PATH" {
-    default = "./keys/secret_key"
-}
-
 # Path to public key
 variable "PUBLIC_KEY_PATH" {
     default = "./keys/terraform_key.pub"

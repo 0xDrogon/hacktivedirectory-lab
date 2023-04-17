@@ -2,6 +2,5 @@ terraform/keys/*key*
 terraform/.terraform/
 terraform/.terraform*
 terraform/terraform*
-terraform/vars.tf
 rdp/
 prints/

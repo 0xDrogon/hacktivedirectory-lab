@@ -41,7 +41,13 @@ $ git clone https://github.com/0xDrogon/activedirectory-lab.git
 
 ### 2. AWS Setup
 
-Store your AWS access key under `terraform/keys/access_key` and your AWS secret access key under `terraform/keys/secret_key`.
+Create a new AWS Access Key and run:
+
+```
+$ aws configure
+```
+
+When it asks you for your Access Key ID and Secret Access Key, copy both values from the AWS Access Key you just created. When it asks you for the default region name, you can type `eu-west-1` (the region being used by this project). You can also choose a different region but, if you do so, you should also change it in the [main.tf](./terraform/main.tf) file.
 
 Create an EC2 key pair with private key format `.pem`. Save it under `terraform/keys/terraform_key.pem` and run:
 

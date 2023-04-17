@@ -1,7 +1,7 @@
+# AWS provider
 provider "aws" {
-    region     = "eu-west-1"
-    access_key = file(var.AWS_ACCESS_KEY_PATH)
-    secret_key = file(var.AWS_SECRET_KEY_PATH)
+    profile = "default"
+    region  = "eu-west-1"
 }
 
 # AWS keypair
