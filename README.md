@@ -112,6 +112,7 @@ $ ssh -i terraform/keys/terraform_key.pem admin@<attacker_ip>
 
 ## Attacks tested (so far)
 
+* User Enumeration
 * Password Spraying
 * User with cleartext password in the description
 * AS-REP Roasting
