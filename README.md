@@ -1,4 +1,4 @@
-# Active Directory AWS Lab
+# HacktiveDirectory Lab
 
 
 ## Description
