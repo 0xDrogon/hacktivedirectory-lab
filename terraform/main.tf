@@ -398,7 +398,7 @@ resource "aws_ssm_parameter" "darlene-alderson-ssm-parameter" {
     # User with Unconstrained Delegation
     name  = "darlene.alderson"
     type  = "SecureString"
-    value = "{\"Username\":\"darlene.alderson\", \"Password\":\"M00np1&\"}"
+    value = "{\"Username\":\"darlene.alderson\", \"Password\":\"M00npie\"}"
 }
 resource "aws_ssm_parameter" "leslie-romero-ssm-parameter" {
     # User with cleartext password in the description

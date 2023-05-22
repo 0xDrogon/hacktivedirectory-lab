@@ -100,7 +100,7 @@ $ ssh -i terraform/keys/terraform_key.pem admin@<attacker_ip>
 | admin            | I_4m_D0m41n_Adm1n15tr4t0r | fsociety.local | Administrator                     |
 | mr.robot         | !LeAvE_mE_hErE!           | fsociety.local | DNS administrator                 |
 | elliot.alderson  | ShAyLa_QwErTy_KrIsTa      | fsociety.local | Constrained delegation            |
-| darlene.alderson | M00np1&                   | fsociety.local | Unconstrained delegation          |
+| darlene.alderson | M00npie                   | fsociety.local | Unconstrained delegation          |
 | leslie.romero    | RGFyayBBcm15              | fsociety.local | Plaintext password in description |
 | angela.moss      | Jogging1988               | fsociety.local | Kerberos preauth disabled         |
 | leon             | Password123               | fsociety.local | Weak password                     |
