@@ -3,6 +3,11 @@ administrator
 mr.robot
 tiago
 aaa
+leon
 slb
 benfica
 admin.user
+angela.moss
+guest
+guest.user
+test
