@@ -60,7 +60,7 @@ Copy the output (your public key) and store it under `terraform/keys/terraform_k
 
 ### 3. Terraform variables
 
-You need to fill in some variables in Terraform's [vars.tf](./terraform/vars.tf) file that are specific to you. First, you need to add the IP address (or list of IP addresses) that you are going to be using to manage the deployed instances in the `MANAGEMENT_IPS` variable. Then, choose a name for your S3 bucket and assign it to the `S3_BUCKET` variable (mind that the name must be globally unique!).
+You need to fill in some variables in Terraform's [vars.tf](./terraform/vars.tf) file that are specific to you. First, you need to add the public IP address (or list of public IP addresses) that you are going to be using to manage the deployed instances in the `MANAGEMENT_IPS` variable. Then, choose a name for your S3 bucket and assign it to the `S3_BUCKET` variable (mind that the name must be globally unique!).
 
 ### 4. Deployment
 
